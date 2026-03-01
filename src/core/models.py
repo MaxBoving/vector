@@ -1,5 +1,6 @@
-from typing import Dict, List, Optional
+from typing import Dict, List, Optional, Any
 from enum import Enum
+from pydantic import BaseModel
 from sqlmodel import Field, SQLModel, Column, JSON
 
 class RiskTolerance(str, Enum):
@@ -41,7 +42,7 @@ class CEOPreferences(SQLModel, table=True):
     rejection_count: int = Field(default=0)
     edit_distance_avg: float = Field(default=0.0)
 
-class StrategicInitiative(SQLModel):
+class StrategicInitiative(BaseModel):
     name: str
     owner: str
     status: str
@@ -65,7 +66,7 @@ class CompanyState(SQLModel, table=True):
         default_factory=dict, 
         sa_column=Column(JSON)
     )
-    strategic_initiatives: List[StrategicInitiative] = Field(
+    strategic_initiatives: List[Dict[str, Any]] = Field(
         default_factory=list, 
         sa_column=Column(JSON)
     )
