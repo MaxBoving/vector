@@ -57,3 +57,13 @@ def test_report_completion_with_plan_holds_both():
     completion = ReportCompletionWithPlan(plan=plan, payload=_make_payload())
     assert completion.plan.output_modality == "docx"
     assert completion.payload.answer.title == "Test"
+
+
+def test_context_gaps_defaults_without_explicit_arg():
+    plan = CompositionPlan(section_labels=["A", "B", "C"], output_modality="inline")
+    assert plan.context_gaps == []
+
+
+def test_capability_requires_defaults_without_explicit_arg():
+    plan = CompositionPlan(section_labels=["A", "B", "C"], output_modality="inline")
+    assert plan.capability_requires == []
