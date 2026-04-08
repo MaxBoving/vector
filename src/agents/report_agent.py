@@ -56,6 +56,7 @@ from src.workflows.workbook_models import (
 )
 
 from .base import BaseAgent
+from .capability_guard import CapabilityGuard
 from .schemas import (
     AgentInput,
     AgentMetadata,
@@ -424,7 +425,6 @@ class ReportAgent(BaseAgent):
             task_input=task_input,
             intent_state=intent_state,
             unified_memory=unified_memory,
-            finance_template=finance_template,
         )
 
         # ── Clarification gate ────────────────────────────────────────────────
@@ -473,6 +473,8 @@ class ReportAgent(BaseAgent):
                     },
                 )
 
+        from src.agents.composition_plan import ReportCompletionWithPlan
+
         if "report_completion" not in context:
             return AgentOutput(
                 agent_name=self.metadata.name,
@@ -517,7 +519,7 @@ class ReportAgent(BaseAgent):
                             "If the CEO asked for a deck or workbook, generate the underlying executive content for it; "
                             "never say the capability is unavailable."
                         ).strip(),
-                        response_model=ReportPayload,
+                        response_model=ReportCompletionWithPlan,
                         model=self.COMPLETION_MODEL,
                     )
                 ],
@@ -529,14 +531,13 @@ class ReportAgent(BaseAgent):
                 },
             )
 
-        payload = self._generate_report_payload(
+        payload, composition_plan = self._generate_report_payload(
             task_input,
             company_state,
             signals,
             retrieval,
             context.get("report_completion"),
         )
-        payload = self._apply_finance_template_to_payload(payload, finance_template=finance_template)
         payload = self._apply_threshold_events_to_payload(
             task_input=task_input,
             payload=payload,
@@ -544,37 +545,10 @@ class ReportAgent(BaseAgent):
             retrieval=retrieval,
             finance_template=finance_template,
         )
-        payload = self._apply_finance_close_focus_to_payload(
-            task_input=task_input,
-            payload=payload,
-            retrieval=retrieval,
-            signals=signals,
-            finance_template=finance_template,
-        )
-        payload = self._apply_finance_operational_breakdown_shape(
-            task_input=task_input,
-            payload=payload,
-            session_history=session_history,
-        )
-        payload = self._apply_followup_action_plan_shape(
-            task_input=task_input,
-            payload=payload,
-            session_history=session_history,
-            artifact_type=artifact_type,
-        )
-        payload = self._apply_resolution_language_shape(
-            task_input=task_input,
-            payload=payload,
-            session_history=session_history,
-        )
         payload = self._apply_financial_task_contract(
             task_input=task_input,
             payload=payload,
             financial_task=financial_task,
-        )
-        payload = self._enforce_three_s(
-            payload,
-            preferred_labels=self._template_section_labels(finance_template) if finance_template else None,
         )
         if artifact_type == "email":
             payload = self._fix_email_sections(payload)
@@ -587,6 +561,14 @@ class ReportAgent(BaseAgent):
             session_history=session_history,
             retrieval=retrieval,
         )
+        # ── CapabilityGuard: strip action offers for disconnected providers ──
+        connected_providers: set[str] = set(
+            context.get("connected_providers")
+            or agent_input.workflow_state.metadata.get("connected_providers")
+            or []
+        )
+        raw_qo = payload.trust.question_options or []
+        payload.trust.question_options = CapabilityGuard().strip(raw_qo, connected_providers)
         financial_workspace = (
             build_financial_workspace(
                 task=financial_task,
@@ -738,17 +720,28 @@ class ReportAgent(BaseAgent):
         signals: List[Dict[str, Any]],
         retrieval: List[Dict[str, Any]],
         completion: Optional[Dict[str, Any]],
-    ) -> ReportPayload:
+    ) -> tuple[ReportPayload, Optional["CompositionPlan"]]:
+        from src.agents.composition_plan import CompositionPlan, ReportCompletionWithPlan
+        from src.agents.output_normalizer import OutputNormalizer
+
         if completion:
             try:
-                payload = ReportPayload(**completion)
+                result = ReportCompletionWithPlan(**completion)
+                payload = result.payload
+                payload = OutputNormalizer().normalize(payload, result.plan)
                 payload.sources = self._rank_and_normalize_sources(payload.sources)
-                return payload
+                return payload, result.plan
             except Exception:
-                pass
+                # Fall back to bare ReportPayload parsing (pre-plan completions)
+                try:
+                    payload = ReportPayload(**completion)
+                    payload.sources = self._rank_and_normalize_sources(payload.sources)
+                    return payload, None
+                except Exception:
+                    pass
         payload = self._fallback_payload(task_input, company_state, retrieval)
         payload.sources = self._rank_and_normalize_sources(payload.sources)
-        return payload
+        return payload, None
 
     # ── Context gap detection ─────────────────────────────────────────────
     # These keyword sets classify query intent so we can check whether the
@@ -2358,63 +2351,6 @@ class ReportAgent(BaseAgent):
             ],
         )
 
-    def _enforce_three_s(self, payload: ReportPayload, preferred_labels: Optional[list[str]] = None) -> ReportPayload:
-        preferred_labels = preferred_labels or ["Key Finding", "Business Implications", "Recommended Actions"]
-        normalized_sections: list[ReportSection] = []
-
-        for index, label in enumerate(preferred_labels):
-            if index < len(payload.answer.sections):
-                section = payload.answer.sections[index]
-                section_label = section.label or label
-            else:
-                section = ReportSection(label=label)
-                section_label = label
-
-            candidate_items = [item.strip() for item in section.items if item and item.strip()]
-            if section.content and section.content.strip():
-                content_parts = [
-                    part.strip(" -")
-                    for part in section.content.replace("\n", " ").split(".")
-                    if part.strip()
-                ]
-                for part in content_parts:
-                    if part and part not in candidate_items:
-                        candidate_items.append(part)
-
-            while len(candidate_items) < 3:
-                candidate_items.append(self._default_subpoint(section_label, len(candidate_items)))
-
-            normalized_sections.append(
-                ReportSection(
-                    label=section_label,
-                    items=candidate_items[:3],
-                )
-            )
-
-        payload.answer.sections = normalized_sections[:3]
-        return payload
-
-
-    def _default_subpoint(self, label: str, index: int) -> str:
-        defaults = {
-            "Key Finding": [
-                "The main conclusion is grounded in current company context.",
-                "Available evidence supports the core finding, but should be reviewed against the latest data.",
-                "The finding should be pressure-tested if new operating information has emerged.",
-            ],
-            "Business Implications": [
-                "This outcome affects current planning and prioritization decisions.",
-                "Leadership should check whether the implication changes risk, timing, or resource allocation.",
-                "The implication should be reviewed against current operating constraints.",
-            ],
-            "Recommended Actions": [
-                "Confirm the highest-impact assumption before acting.",
-                "Review supporting materials before circulating the report.",
-                "Decide whether a deeper follow-up analysis is required.",
-            ],
-        }
-        return defaults.get(label, ["Review the current context.", "Validate the assumptions.", "Confirm the next action."])[index]
-
     def _to_markdown(self, payload: ReportPayload) -> str:
         lines = [f"# {payload.answer.title}", "", payload.answer.summary]
         for section in payload.answer.sections:
@@ -3376,150 +3312,6 @@ class ReportAgent(BaseAgent):
                 payload.answer.sections[1].items = [threshold_summary, *payload.answer.sections[1].items][:3]
         return payload
 
-    def _apply_finance_template_to_payload(self, payload: ReportPayload, *, finance_template: Optional[str]) -> ReportPayload:
-        if not finance_template:
-            return payload
-        payload = payload.model_copy(deep=True)
-        labels = self._template_section_labels(finance_template)
-        for index, label in enumerate(labels):
-            if index < len(payload.answer.sections):
-                payload.answer.sections[index].label = label
-        if finance_template == "aws_cost_review" and "AWS" not in payload.answer.title:
-            payload.answer.title = f"AWS Cost Review: {payload.answer.title}"
-        elif finance_template == "runway_burn_review" and "Runway" not in payload.answer.title:
-            payload.answer.title = f"Runway and Burn Review: {payload.answer.title}"
-        elif finance_template == "project_spend_review" and "Project" not in payload.answer.title:
-            payload.answer.title = f"Project Spend Review: {payload.answer.title}"
-        return payload
-
-    def _apply_finance_close_focus_to_payload(
-        self,
-        *,
-        task_input: str,
-        payload: ReportPayload,
-        retrieval: List[Dict[str, Any]],
-        signals: List[Dict[str, Any]],
-        finance_template: Optional[str],
-    ) -> ReportPayload:
-        if finance_template != "board_financial_update":
-            return payload
-        if not self._is_company_health_summary_request(task_input):
-            return payload
-
-        finance_close_items = self._finance_close_issue_items(retrieval, signals)
-        if len(finance_close_items) < 3:
-            return payload
-
-        payload = payload.model_copy(deep=True)
-        summary_prefix = (
-            "Finance close review is the immediate company-health issue: "
-            "cloud spend variance is above forecast and the board packet narrative for close week still needs a final CEO call."
-        )
-        if summary_prefix.lower() not in payload.answer.summary.lower():
-            payload.answer.summary = f"{summary_prefix} {payload.answer.summary}".strip()
-
-        while len(payload.answer.sections) < 3:
-            payload.answer.sections.append(ReportSection(label="Recommended Actions", items=[]))
-
-        key_section = payload.answer.sections[0]
-        risk_section = payload.answer.sections[1]
-        action_section = payload.answer.sections[2]
-        key_section.items = [finance_close_items[0], *key_section.items][:3]
-        risk_section.items = [finance_close_items[1], *risk_section.items][:3]
-        action_section.items = [finance_close_items[2], *action_section.items][:3]
-        return payload
-
-    def _apply_finance_operational_breakdown_shape(
-        self,
-        *,
-        task_input: str,
-        payload: ReportPayload,
-        session_history: List[Dict[str, Any]],
-    ) -> ReportPayload:
-        if self._finance_followup_submode(task_input, session_history) != "operational_breakdown":
-            return payload
-
-        payload = payload.model_copy(deep=True)
-        lowered = task_input.lower()
-        if "s&m" in lowered or "sales and marketing" in lowered:
-            payload.answer.title = "S&M Freeze Implementation Framework"
-        elif "cloud" in lowered:
-            payload.answer.title = "Cloud Reduction Implementation Framework"
-        elif "hiring" in lowered:
-            payload.answer.title = "Hiring Deferral Implementation Framework"
-        payload.answer.summary = (
-            "Use the freeze as a provisional implementation framework today rather than waiting on a perfect vendor ledger. "
-            "The working cut assumes lower-priority paid programs, agency retainers, event spend, and non-critical tools come out first, "
-            "with Marcus validating the exact line items and revenue impact before final sign-off."
-        )
-        payload.answer.sections = [
-            ReportSection(label="Working Line-Item Framework", items=self._finance_operational_breakdown_items()),
-            ReportSection(label="Owners, Timing & Risk", items=self._finance_operational_owner_items()),
-            ReportSection(label="What Marcus Must Confirm", items=self._finance_operational_followup_items()),
-        ]
-        return payload
-
-    def _apply_followup_action_plan_shape(
-        self,
-        *,
-        task_input: str,
-        payload: ReportPayload,
-        session_history: List[Dict[str, Any]],
-        artifact_type: Optional[str] = None,
-    ) -> ReportPayload:
-        if self._report_followup_mode(task_input, session_history) != "action_plan":
-            return payload
-        if self._is_explicit_email_request(task_input, artifact_type) or self._is_resolution_language_request(task_input):
-            return payload
-
-        payload = payload.model_copy(deep=True)
-        finance_submode = self._finance_followup_submode(task_input, session_history)
-        payload.answer.summary = self._direct_followup_summary(
-            task_input,
-            payload.answer.summary,
-            session_history=session_history,
-            finance_submode=finance_submode,
-        )
-
-        while len(payload.answer.sections) < 3:
-            payload.answer.sections.append(ReportSection(label="Recommended Actions", items=[]))
-
-        lowered = task_input.lower()
-        if finance_submode == "operational_breakdown":
-            payload.answer.sections[0].label = "Cost Action Breakdown"
-            payload.answer.sections[1].label = "Owners, Timing & Risk"
-            payload.answer.sections[2].label = "Immediate Follow-Up"
-        elif self._contains_any_marker(lowered, ("defer", "delegate", "what can i safely", "what can we safely", "safely defer", "safely delegate")):
-            payload.answer.sections[0].label = "CEO Must Own Today"
-            payload.answer.sections[1].label = "Safe to Delegate"
-            payload.answer.sections[2].label = "Safe to Defer"
-        elif self._contains_any_marker(lowered, ("sequence", "how should i sequence", "how to sequence", "what order should", "prep sequence", "priority order")):
-            payload.answer.sections[0].label = "Ordered Sequence"
-            payload.answer.sections[1].label = "Constraints & Blockers"
-            payload.answer.sections[2].label = "If Time Runs Short"
-
-        payload.answer.sections[0].items = [
-            self._strip_generic_report_lead(item) for item in payload.answer.sections[0].items[:3]
-        ]
-        payload.answer.sections[1].items = [
-            self._strip_generic_report_lead(item) for item in payload.answer.sections[1].items[:3]
-        ]
-        if finance_submode == "operational_breakdown":
-            payload.answer.sections[0].items = self._finance_operational_breakdown_items()
-            payload.answer.sections[1].items = self._finance_operational_owner_items()
-        payload.answer.sections[2].items = self._followup_action_items(
-            task_input=task_input,
-            payload=payload,
-            session_history=session_history,
-            finance_submode=finance_submode,
-        )
-        payload.trust.open_questions = [
-            question
-            for question in payload.trust.open_questions
-            if "do you want" not in question.lower()
-        ]
-        return payload
-
     def _direct_followup_summary(
         self,
         task_input: str,
@@ -3752,53 +3544,6 @@ class ReportAgent(BaseAgent):
             "Priya Desai | By end of day: confirm the three development environments being shut down, owner per environment, and the rollback path if engineering velocity is hit.",
             "Head of Talent + Marcus Webb | By tomorrow morning: confirm the two deferred Q3 hires, the revised timing for each role, and the delivery impact if either role slips again.",
         ]
-
-    def _apply_resolution_language_shape(
-        self,
-        *,
-        task_input: str,
-        payload: ReportPayload,
-        session_history: List[Dict[str, Any]],
-    ) -> ReportPayload:
-        if not self._is_resolution_language_request(task_input):
-            return payload
-
-        payload = payload.model_copy(deep=True)
-        vp_limit = self._find_currency_threshold(session_history, default="$50K", role_markers=("vp sales",))
-        cfo_limit = self._find_currency_threshold(session_history, default="$500K", role_markers=("cfo",))
-        payload.answer.title = "Board Resolution — Pricing Committee Governance"
-        payload.answer.summary = (
-            f"This resolution establishes the Pricing Committee, sets approval authority at up to {vp_limit} for VP Sales, "
-            f"{vp_limit} to {cfo_limit} for the CFO, and requires CEO plus Board approval above {cfo_limit}. "
-            "It also sets membership, meeting cadence, and reporting obligations for board oversight."
-        )
-        payload.answer.sections = [
-            ReportSection(
-                label="Resolution Text",
-                items=[
-                    "WHEREAS, the Board of Directors has determined that the Corporation requires a formal Pricing Committee to govern pricing strategy, discount approvals, renewal exceptions, and other material commercial pricing decisions across product lines;",
-                    "RESOLVED, that the Board hereby establishes a Pricing Committee consisting of the Chief Financial Officer, the Vice President of Sales, and the Chief Executive Officer, with the Chief Financial Officer serving as chair and responsible for maintaining committee records and decision logs;",
-                    f"RESOLVED FURTHER, that pricing authority is delegated as follows: (a) the Vice President of Sales may approve pricing and discount actions with annualized contract value up to {vp_limit}; (b) the Chief Financial Officer must approve pricing and discount actions above {vp_limit} and up to {cfo_limit}; and (c) any pricing action above {cfo_limit}, any strategic pricing exception for a named enterprise account, or any committee decision that materially impacts margin guidance requires approval by both the Chief Executive Officer and the Board of Directors;",
-                ],
-            ),
-            ReportSection(
-                label="Committee Structure",
-                items=[
-                    "Membership and scope: CFO, VP Sales, and CEO review new pricing frameworks, non-standard enterprise renewals, strategic discounting, and any exception that could materially affect gross margin or renewal risk.",
-                    "Cadence and documentation: the committee meets at least monthly and on demand for urgent enterprise decisions, records each approval in a pricing register, and documents decision rationale, authority tier, expected margin impact, and owner for follow-through.",
-                    "Reporting requirements: the CFO delivers a quarterly report to the Board summarizing approvals by tier, major exceptions granted, gross-margin impact, and any pricing actions that require changes to board-level guidance or fundraising narrative.",
-                ],
-            ),
-            ReportSection(
-                label="Counsel Review Points",
-                items=[
-                    "Confirm the resolution language aligns with current bylaws and any existing delegation-of-authority policy.",
-                    "Verify whether emergency pricing exceptions require a separate ratification clause or can be handled through the standard Board-approval threshold above the CFO tier.",
-                    "Tighten defined terms such as 'pricing action', 'strategic pricing exception', and 'materially impacts margin guidance' for final board package precision.",
-                ],
-            ),
-        ]
-        return payload
 
     def _find_currency_threshold(
         self,
