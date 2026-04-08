@@ -702,6 +702,7 @@ class ReportAgent(BaseAgent):
             metadata={
                 "workflow_type": "report_generation",
                 "response_type": "report",
+                "composition_plan": composition_plan.model_dump() if composition_plan else None,
                 "finance_template": finance_template,
                 "finance_digest": finance_digest,
                 "primary_visual": primary_visual,
