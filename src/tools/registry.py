@@ -1,4 +1,5 @@
-from typing import Any, Dict, Iterable, Optional
+import time
+from typing import Any, Dict, Iterable, Optional, Tuple
 
 from .base import BaseTool, ToolContext, ToolResult
 
@@ -43,6 +44,29 @@ class ToolRegistry:
         tool = self.get(name)
         tool_context = context or ToolContext()
         return tool.invoke(tool_context, **kwargs)
+
+    def invoke_with_event(
+        self, name: str, context: Optional[ToolContext] = None, **kwargs: Any
+    ) -> "Tuple[ToolResult, Any]":
+        """Compatibility shim: invoke a tool and return (ToolResult, ToolEvent).
+
+        ToolEvent is imported lazily to avoid a circular dependency with src.runtime.
+        """
+        tool_context = context or ToolContext()
+        start = time.monotonic()
+        result = self.invoke(name, tool_context, **kwargs)
+        duration_ms = round((time.monotonic() - start) * 1000, 2)
+
+        from src.runtime.events import ToolEvent
+
+        event = ToolEvent(
+            workflow_id=tool_context.workflow_id or "",
+            tool_name=name,
+            stage=tool_context.stage,
+            status="completed" if result.success else "failed",
+            payload={"duration_ms": duration_ms, "metadata": result.metadata},
+        )
+        return result, event
 
 
 def build_default_tool_registry() -> ToolRegistry:

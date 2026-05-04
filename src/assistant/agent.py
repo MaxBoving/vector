@@ -92,7 +92,9 @@ class AgenticAssistant:
             if not tool_uses:
                 return text, None
 
-            # Write tool detected — surface for approval, stop loop
+            # Surface the first write tool — if Claude batches multiple write tools in one
+            # response, only the first is shown to the CEO. This is intentional: approval
+            # is per-interaction, and batching multiple write actions in one turn is rare.
             for tool_use in tool_uses:
                 if is_write_tool(tool_use.name):
                     return text, {"tool_name": tool_use.name, "tool_inputs": tool_use.input}
