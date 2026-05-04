@@ -382,6 +382,7 @@ class ApprovalResolutionRequest(BaseModel):
     decision: ApprovalDecision
     mode: Optional[ApprovalMode] = None
     note: Optional[str] = None
+    conversation_id: Optional[str] = None
 
 
 class DocumentUploadResponse(BaseModel):
