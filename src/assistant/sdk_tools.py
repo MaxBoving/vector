@@ -310,6 +310,8 @@ def get_anthropic_tools() -> list[dict[str, Any]]:
 def execute_tool(name: str, inputs: dict[str, Any], context: ToolContext) -> str:
     """Execute a tool and return a JSON string result."""
     registry = _get_registry()
+    if not registry.has(name):
+        return json.dumps({"error": f"unknown tool: {name}"})
     result = registry.invoke(name, context=context, **inputs)
     if result.success:
         return json.dumps(result.data)
