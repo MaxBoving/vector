@@ -45,7 +45,7 @@ def test_execute_tool_returns_string():
     assert isinstance(result, str)
 
 
-from unittest.mock import MagicMock
+from unittest.mock import MagicMock, patch
 from src.assistant.approval import is_write_tool, store_pending_action, execute_approval, reject_approval
 
 
@@ -97,3 +97,85 @@ def test_store_and_reject_pending_action(tmp_path, monkeypatch):
     action = stored["pending_actions"][0]
     assert action["tool_name"] == "send_email_draft"
     assert action["interaction_id"] == 42
+
+
+import asyncio
+from src.assistant.agent import AgenticAssistant
+from src.api.schemas import AssistantQueryRequest, AssistantMessageResponse
+
+
+def _make_interaction(id: int = 1, ceo_id: str = "ceo_test") -> MagicMock:
+    interaction = MagicMock()
+    interaction.id = id
+    interaction.ceo_id = ceo_id
+    return interaction
+
+
+def _make_payload(message: str = "What's in my inbox?") -> AssistantQueryRequest:
+    return AssistantQueryRequest(message=message, conversation_id="conv_001")
+
+
+def _make_anthropic_text_response(text: str) -> MagicMock:
+    block = MagicMock()
+    block.type = "text"
+    block.text = text
+    response = MagicMock()
+    response.stop_reason = "end_turn"
+    response.content = [block]
+    return response
+
+
+def test_agent_returns_assistant_message_response():
+    agent = AgenticAssistant()
+    user = _make_user()
+    payload = _make_payload()
+    interaction = _make_interaction()
+
+    mock_response = _make_anthropic_text_response("You have 3 urgent emails.")
+
+    with patch.object(agent._client.messages, "create", return_value=mock_response):
+        with patch("src.assistant.agent.get_ceo_preferences", return_value=None):
+            with patch("src.assistant.agent.get_session_history", return_value=[]):
+                result = asyncio.run(
+                    agent.handle(payload=payload, interaction=interaction, current_user=user)
+                )
+
+    assert isinstance(result, AssistantMessageResponse)
+    assert result.conversation_id == "conv_001"
+    assert result.status == "completed"
+    assert "urgent" in result.answer.summary
+
+
+def test_agent_surfaces_write_tool_as_pending():
+    agent = AgenticAssistant()
+    user = _make_user()
+    payload = _make_payload(message="Send a follow-up to alice@example.com")
+    interaction = _make_interaction(id=99)
+
+    tool_use_block = MagicMock()
+    tool_use_block.type = "tool_use"
+    tool_use_block.name = "send_email_draft"
+    tool_use_block.id = "tu_001"
+    tool_use_block.input = {"to": "alice@example.com", "subject": "Follow-up", "body": "Hi Alice"}
+
+    text_block = MagicMock()
+    text_block.type = "text"
+    text_block.text = "Here's the email I'd send — want me to send it?"
+
+    response = MagicMock()
+    response.stop_reason = "tool_use"
+    response.content = [text_block, tool_use_block]
+
+    with patch.object(agent._client.messages, "create", return_value=response):
+        with patch("src.assistant.agent.get_ceo_preferences", return_value=None):
+            with patch("src.assistant.agent.get_session_history", return_value=[]):
+                with patch("src.assistant.agent.store_pending_action") as mock_store:
+                    result = asyncio.run(
+                        agent.handle(payload=payload, interaction=interaction, current_user=user)
+                    )
+
+    assert result.status == "pending"
+    assert mock_store.called
+    call_kwargs = mock_store.call_args.kwargs
+    assert call_kwargs["tool_name"] == "send_email_draft"
+    assert call_kwargs["interaction_id"] == 99
