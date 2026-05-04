@@ -5,6 +5,7 @@ short-circuit and are stored for CEO approval via approval.py.
 """
 from __future__ import annotations
 
+import asyncio
 import os
 from typing import Any
 
@@ -43,8 +44,8 @@ class AgenticAssistant:
             interaction_id=interaction.id,
             company_name=current_user.company_name,
         )
-        system_prompt = self._build_system_prompt(current_user)
-        history = self._load_history(ceo_id)
+        system_prompt = await asyncio.to_thread(self._build_system_prompt, current_user)
+        history = await asyncio.to_thread(self._load_history, ceo_id)
         messages: list[dict[str, Any]] = history + [{"role": "user", "content": payload.message}]
         tools = get_anthropic_tools()
 
@@ -118,15 +119,29 @@ class AgenticAssistant:
         company = user.company_name or "your company"
         lines = [
             f"You are an executive AI assistant for the CEO of {company}.",
-            "You have tools to read email, calendar, company data, documents, memory, and more.",
-            "Be direct, concise, and executive-facing.",
-            "For write actions (send_email_draft, slack_post, create_*), call the tool — "
-            "it will be shown to the CEO for approval before execution.",
+            "Be direct, concise, and executive-facing. No filler, no preamble.",
+            "",
+            "## When to use tools",
+            "- Email or inbox questions → read_email_threads",
+            "- Schedule or meeting questions → read_calendar_events",
+            "- What to focus on, priorities, open items → get_live_context, get_recent_signals",
+            "- Company metrics, financials, or strategy → get_company_state",
+            "- Specific person or company mentioned → get_entity_context",
+            "- Past conversations or prior decisions → get_thread_entries, semantic_search",
+            "- CRM deals or pipeline → crm_deal_context",
+            "- Slack channels or messages → slack_read",
+            "",
+            "Call tools before answering when the question needs real data. "
+            "Don't speculate — if you need data, fetch it.",
+            "",
+            "## Write actions",
+            "send_email_draft and slack_post require CEO approval — call the tool and it will be shown for confirmation.",
+            "Document creation (create_docx_memo, create_pptx_deck, create_workbook, create_canvas) executes immediately.",
         ]
         if prefs and prefs.priority_senders:
-            lines.append(f"Priority senders: {', '.join(list(prefs.priority_senders)[:5])}")
+            lines.append(f"\nPriority senders: {', '.join(list(prefs.priority_senders)[:5])}")
         if prefs and prefs.ignored_senders:
-            lines.append(f"Ignore emails from: {', '.join(list(prefs.ignored_senders)[:5])}")
+            lines.append(f"Deprioritize emails from: {', '.join(list(prefs.ignored_senders)[:5])}")
         return "\n".join(lines)
 
     def _load_history(self, ceo_id: str) -> list[dict[str, Any]]:
