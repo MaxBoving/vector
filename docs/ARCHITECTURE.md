@@ -1,60 +1,107 @@
-# Architectural Detail: agenticMIND
+# Detailed Architecture
 
-This document defines the two primary logic cycles of **agenticMIND**: the **Inquiry Synthesis Flow** (Inbound Tasks) and the **Preference Learning Loop** (Continuous Improvement).
+## Primary Runtime
+The active runtime path is:
 
-## 1. Inquiry Synthesis Flow
+1. `POST /assistant/query`
+2. `src/workflows/runner.py`
+3. `src/runtime/engine.py`
+4. `src/workflows/routing.py` and `src/workflows/request_planner.py`
+5. `src/agents/router_agent.py`
+6. `src/agents/report_agent.py`, `src/agents/explainer_agent.py`, or `src/agents/briefing_agent.py`
+7. `src/tools/registry.py`
+8. `src/workflows/read_model.py`
 
-This flow ensures that every CEO request is framed by the current company state and the CEO's personal preferences before any external models are engaged.
+This is the only supported product path.
 
-```mermaid
-sequenceDiagram
-    participant CEO
-    participant Brain as Executive Brain
-    participant State as State Engine
-    participant Pref as Preference Model
-    participant Route as Routing Logic
-    participant Specialist as Specialist Worker (Claude/GPT)
+## Workflow Types
 
-    CEO->>Brain: Strategic Inquiry ("Assess expansion into SE Asia")
-    Brain->>State: Fetch Capital Position & Revenue Segmentation
-    Brain->>Pref: Fetch Risk Tolerance (Geographic) & Tone
-    Brain->>Route: Decide Specialist (e.g., Gemini for Research)
-    Route->>Specialist: Exec Task (Bounded)
-    Specialist-->>Route: Raw Synthesis
-    Route->>Brain: Normalized Return
-    Brain->>Brain: Refine Output (Apply Tone/Style)
-    Brain->>CEO: Executive Synthesis & Proposed Next Steps
-```
+### `report_generation`
+- Used for company-state-driven executive reporting.
+- Retrieves company state, preferences, and semantic context.
+- Produces a structured report payload with trust metadata and sources.
 
-## 2. Preference Learning Loop
+### `document_explanation`
+- Used when the user attaches or references documents.
+- Retrieves relevant document context and explains business implications.
+- Produces a structured explanation payload with trust metadata and sources.
 
-The system avoids neural weight retraining, instead using a structural adaptation loop to update the `CEOPreferenceModel`.
+### `email_ingestion`
+- Used for inbox watch and event-driven email triage.
+- Combines provider email payloads with CEO-scoped context stages.
+- Produces an executive inbox brief through `BriefingAgent`.
 
-```mermaid
-graph LR
-    Log[Interaction Log] --> FB[Feedback Capture: Edit/Approve/Reject]
-    FB --> Calc[Calculate Edit Distance & Approval Rate]
-    Calc --> Update[Update CEO Preference Vector]
-    Update --> Next[Next Brain Synthesis]
-    
-    subgraph "Adaptation Framework"
-        Update
-        Next
-    end
-```
+### `calendar_briefing`
+- Used for meeting prep and calendar watch requests.
+- Combines calendar payloads with company and retrieval context.
+- Produces a meeting-oriented briefing through `BriefingAgent`.
 
-### Preference Metrics
-- **Tone Alignment:** Track preferred vs. actual brevity.
-- **Risk Convergence:** Update risk tolerance for specific domains based on rejection patterns.
-- **Approval Rate:** Metric for system trust and routing efficiency.
+### `morning_brief`
+- Used for combined watch requests and scheduled brief generation.
+- Pulls inbox, calendar, retrieval, and signal context into one briefing payload.
 
-## 3. Decision Primitives (Company State)
-Rather than raw data, the **State Engine** maintains a high-level summary of:
-- **Financials:** Revenue by segment, cost structure, and capital runway.
-- **Operations:** Strategic initiatives, org structure, and regulatory footprint.
-- **Velocity:** Historical decision-making speed for performance baselining.
+### `day_schedule_planning`
+- Used for direct planning requests and planner-led compound weekly requests.
+- Currently serves as the carrier workflow for compound inbox/calendar planning evidence.
+- Still depends on helper assembly in `src/workflows/runner.py` for the weekly compound path.
 
-## 4. Latency Mitigation
-- **Parallelized Worker Calls:** Specialized agents are called simultaneously when dependencies permit.
-- **Context Compression:** Only relevant primitives from the `CompanyState` are injected into prompts.
-- **Caching:** Semantic caching for repetitive strategic queries.
+## Routing Model
+Assistant requests are first classified into four route families:
+- `watch`
+- `plan`
+- `act`
+- `report`
+
+`src/workflows/routing.py` returns a typed `RouteDecision`. `src/workflows/request_planner.py` adds a `RequestPlan` for planner-led paths, including compound plans that mix inbox, calendar, documents, and a schedule synthesis step.
+
+Current design note:
+- the route taxonomy is implemented
+- the remaining refactor is to promote planner-led compound execution out of `runner.py` into dedicated planning workflows and stages
+
+## Persistence Model
+- `SessionInteraction`: request/response history for a CEO conversation.
+- `WorkflowRun`: persisted workflow state, event log, and structured assistant response.
+- `CompanyState`: CEO/company-scoped business state and indexed knowledge base entries.
+- `CEOPreferences`: stored executive preference state used during generation.
+
+## Documents
+`src/workflows/document_ingestion.py` is the active document ingestion flow.
+
+It is responsible for:
+- decoding the upload
+- running the security scan
+- extracting tags and a short summary
+- indexing chunks in Chroma via `src/core/knowledge.py`
+- persisting the document into `CompanyState.knowledge_base`
+
+## Artifacts
+The assistant runtime still writes workspace artifacts under `workspaces/{ceo_id}/interaction_{id}`. Those files are used as durable intermediate output and by the assistant read model.
+
+## Frontend Contract
+The frontend should rely on the assistant message envelope defined in `src/api/schemas.py`:
+
+- `conversation_id`
+- `message_id`
+- `workflow_type`
+- `response_type`
+- `status`
+- `answer`
+- `trust`
+- `sources`
+- `artifacts`
+- `metadata`
+
+Current caveat:
+- the frontend envelope is stable
+- the read model in `src/workflows/read_model.py` still under-represents non-report workflow types when rebuilding responses from artifacts only
+
+## Related Docs
+- [MVP_PRODUCT_PLAN.md](./MVP_PRODUCT_PLAN.md)
+- [IMPLEMENTATION_TIMELINE.md](./IMPLEMENTATION_TIMELINE.md)
+- [IMPLEMENTATION_WORKERS.md](./IMPLEMENTATION_WORKERS.md)
+- [COLLABORATOR_UI_MIGRATION.md](./COLLABORATOR_UI_MIGRATION.md)
+- [FINANCIAL_WORKBOOK_USER_STORIES.md](./FINANCIAL_WORKBOOK_USER_STORIES.md)
+- [CLAUDE_SKILLS_INTEGRATION_RESEARCH.md](./CLAUDE_SKILLS_INTEGRATION_RESEARCH.md)
+- [CEO_ACCURACY_IMPLEMENTATION_PLAN.md](./CEO_ACCURACY_IMPLEMENTATION_PLAN.md)
+- [EMAIL_WATCHER_IMPLEMENTATION_PLAN.md](./EMAIL_WATCHER_IMPLEMENTATION_PLAN.md)
+- [ROUTER_REFACTOR_PLAN.md](./ROUTER_REFACTOR_PLAN.md)
