@@ -128,9 +128,13 @@ _SCHEMAS: dict[str, dict[str, Any]] = {
     "get_entity_context": {
         "type": "object",
         "properties": {
-            "entity_name": {"type": "string", "description": "Company or person name to look up"},
+            "entities": {
+                "type": "string",
+                "description": "Comma-separated names to look up (e.g. 'Sequoia Capital, John Smith')",
+            },
+            "limit": {"type": "integer", "description": "Max results per entity (default 10)"},
         },
-        "required": ["entity_name"],
+        "required": ["entities"],
     },
     "get_thread_entries": {
         "type": "object",
@@ -279,11 +283,17 @@ _SCHEMAS: dict[str, dict[str, Any]] = {
         "properties": {
             "action": {
                 "type": "string",
-                "enum": ["save", "retrieve", "delete"],
-                "description": "save: persist a fact from this conversation; retrieve: search memory; delete: remove a memory",
+                "enum": ["save", "list", "search", "delete"],
+                "description": "save: persist a fact; list: all memories; search: semantic search; delete: remove by ID",
             },
-            "content": {"type": "string", "description": "The fact or statement to save (for save action)"},
-            "query": {"type": "string", "description": "Search query (for retrieve action)"},
+            "title": {"type": "string", "description": "Short title for the memory (required for save)"},
+            "content": {"type": "string", "description": "Full text of the fact to save (required for save)"},
+            "memory_type": {
+                "type": "string",
+                "enum": ["decision", "commitment", "preference", "fact", "milestone"],
+                "description": "Category of memory (default: fact)",
+            },
+            "query": {"type": "string", "description": "Search query (for search action)"},
             "memory_id": {"type": "string", "description": "Memory ID to delete (for delete action)"},
         },
         "required": ["action"],
