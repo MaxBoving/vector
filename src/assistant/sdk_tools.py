@@ -40,15 +40,17 @@ READ_TOOL_NAMES: frozenset[str] = frozenset({
     "extract_pdf",
     "variance_analysis",
     "execute_math",
-})
-
-WRITE_TOOL_NAMES: frozenset[str] = frozenset({
-    "send_email_draft",
-    "slack_post",
+    # Artifact creation executes immediately — CEO requested it, no approval needed
     "create_docx_memo",
     "create_pptx_deck",
     "create_workbook",
     "create_canvas",
+})
+
+# Only actions that send to external parties require approval
+WRITE_TOOL_NAMES: frozenset[str] = frozenset({
+    "send_email_draft",
+    "slack_post",
 })
 
 EXPOSED_TOOL_NAMES: frozenset[str] = READ_TOOL_NAMES | WRITE_TOOL_NAMES
