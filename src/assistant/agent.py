@@ -135,8 +135,9 @@ class AgenticAssistant:
             "Don't speculate — if you need data, fetch it.",
             "",
             "## Write actions",
-            "send_email_draft and slack_post require CEO approval — call the tool and it will be shown for confirmation.",
+            "send_email_draft, slack_post, and create_calendar_event require CEO approval — call the tool and it will be shown for confirmation.",
             "Document creation (create_docx_memo, create_pptx_deck, create_workbook, create_canvas) executes immediately.",
+            "- To save something the CEO said for future sessions → memory_management with action=save",
         ]
         if prefs and prefs.priority_senders:
             lines.append(f"\nPriority senders: {', '.join(list(prefs.priority_senders)[:5])}")

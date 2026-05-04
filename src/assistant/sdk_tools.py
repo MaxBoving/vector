@@ -40,6 +40,7 @@ READ_TOOL_NAMES: frozenset[str] = frozenset({
     "extract_pdf",
     "variance_analysis",
     "execute_math",
+    "memory_management",
     # Artifact creation executes immediately — CEO requested it, no approval needed
     "create_docx_memo",
     "create_pptx_deck",
@@ -47,10 +48,11 @@ READ_TOOL_NAMES: frozenset[str] = frozenset({
     "create_canvas",
 })
 
-# Only actions that send to external parties require approval
+# Only actions that send to external parties or mutate external state require approval
 WRITE_TOOL_NAMES: frozenset[str] = frozenset({
     "send_email_draft",
     "slack_post",
+    "create_calendar_event",
 })
 
 EXPOSED_TOOL_NAMES: frozenset[str] = READ_TOOL_NAMES | WRITE_TOOL_NAMES
@@ -271,6 +273,36 @@ _SCHEMAS: dict[str, dict[str, Any]] = {
             "content": {"type": "string", "description": "Canvas content"},
         },
         "required": ["title", "content"],
+    },
+    "memory_management": {
+        "type": "object",
+        "properties": {
+            "action": {
+                "type": "string",
+                "enum": ["save", "retrieve", "delete"],
+                "description": "save: persist a fact from this conversation; retrieve: search memory; delete: remove a memory",
+            },
+            "content": {"type": "string", "description": "The fact or statement to save (for save action)"},
+            "query": {"type": "string", "description": "Search query (for retrieve action)"},
+            "memory_id": {"type": "string", "description": "Memory ID to delete (for delete action)"},
+        },
+        "required": ["action"],
+    },
+    "create_calendar_event": {
+        "type": "object",
+        "properties": {
+            "title": {"type": "string", "description": "Event title"},
+            "starts_at": {"type": "string", "description": "Start time in ISO 8601 format (e.g. 2026-05-10T09:00:00)"},
+            "ends_at": {"type": "string", "description": "End time in ISO 8601 format"},
+            "timezone": {"type": "string", "description": "IANA timezone (default UTC, e.g. America/New_York)"},
+            "attendees": {
+                "type": "array",
+                "items": {"type": "string"},
+                "description": "List of attendee email addresses",
+            },
+            "description": {"type": "string", "description": "Event description or agenda"},
+        },
+        "required": ["title", "starts_at", "ends_at"],
     },
 }
 

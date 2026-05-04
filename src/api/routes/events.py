@@ -198,11 +198,21 @@ async def morning_briefing(
     payload: MorningBriefRequest,
     current_user: User = Depends(get_current_user),
 ):
-    runner = EventWorkflowRunner()
+    message = (
+        f"Generate the morning executive brief for {payload.scheduled_for} "
+        f"(timezone: {payload.timezone}). "
+        "Check my email and calendar, surface what needs attention today."
+    )
+    query = AssistantQueryRequest(message=message)
+    interaction = save_object(SessionInteraction(
+        ceo_id=current_user.ceo_id,
+        query=message,
+        status="PENDING",
+    ))
     try:
-        return await runner.run_morning_brief(payload, current_user)
+        return await _agent.handle(payload=query, interaction=interaction, current_user=current_user)
     except Exception as exc:
-        raise HTTPException(status_code=500, detail=f"Morning brief workflow failed: {str(exc)}") from exc
+        raise HTTPException(status_code=500, detail=f"Morning brief failed: {str(exc)}") from exc
 
 
 # ---------------------------------------------------------------------------
