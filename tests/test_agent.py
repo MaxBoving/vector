@@ -43,3 +43,57 @@ def test_execute_tool_returns_string():
     context = ToolContext(ceo_id="test_ceo_001")
     result = execute_tool("get_preferences", {}, context)
     assert isinstance(result, str)
+
+
+from unittest.mock import MagicMock
+from src.assistant.approval import is_write_tool, store_pending_action, execute_approval, reject_approval
+
+
+def test_is_write_tool_true_for_send_email_draft():
+    assert is_write_tool("send_email_draft") is True
+
+
+def test_is_write_tool_false_for_read_email_threads():
+    assert is_write_tool("read_email_threads") is False
+
+
+def _make_user(ceo_id: str = "ceo_test") -> MagicMock:
+    user = MagicMock()
+    user.ceo_id = ceo_id
+    user.company_name = "TestCo"
+    return user
+
+
+def test_store_and_reject_pending_action(tmp_path, monkeypatch):
+    """Store a pending action then reject it — no DB needed via monkeypatching."""
+    stored: dict = {}
+
+    def fake_get_or_create(ceo_id, conversation_id):
+        ctx = MagicMock()
+        ctx.pending_actions = []
+        ctx.id = 1
+        return ctx
+
+    def fake_update(conversation_id, *, pending_actions=None, **kwargs):
+        if pending_actions is not None:
+            stored["pending_actions"] = pending_actions
+
+    monkeypatch.setattr(
+        "src.assistant.approval.get_or_create_live_context", fake_get_or_create
+    )
+    monkeypatch.setattr(
+        "src.assistant.approval.update_live_context", fake_update
+    )
+
+    store_pending_action(
+        ceo_id="ceo_test",
+        conversation_id="conv_001",
+        tool_name="send_email_draft",
+        tool_inputs={"to": "alice@example.com", "subject": "Hi", "body": "Test"},
+        interaction_id=42,
+    )
+
+    assert len(stored["pending_actions"]) == 1
+    action = stored["pending_actions"][0]
+    assert action["tool_name"] == "send_email_draft"
+    assert action["interaction_id"] == 42
