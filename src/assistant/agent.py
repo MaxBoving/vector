@@ -21,6 +21,7 @@ from src.core.database import get_ceo_preferences, get_session_history
 from src.core.models import SessionInteraction, User
 from src.tools.base import ToolContext
 from src.assistant.approval import is_write_tool, store_pending_action
+from src.assistant.formatter import ResponseFormatter
 from src.assistant.sdk_tools import execute_tool, get_anthropic_tools
 
 _MODEL = os.getenv("ANTHROPIC_MODEL", "claude-opus-4-6")
@@ -30,6 +31,7 @@ _MAX_TOOL_ITERATIONS = 10
 class AgenticAssistant:
     def __init__(self) -> None:
         self._client = anthropic.Anthropic()
+        self._formatter = ResponseFormatter()
 
     async def handle(
         self,
@@ -49,7 +51,7 @@ class AgenticAssistant:
         messages: list[dict[str, Any]] = history + [{"role": "user", "content": payload.message}]
         tools = get_anthropic_tools()
 
-        final_text, pending_action = self._run_tool_loop(messages, system_prompt, tools, context)
+        final_text, pending_action, tools_called = self._run_tool_loop(messages, system_prompt, tools, context)
 
         if pending_action:
             store_pending_action(
@@ -60,10 +62,12 @@ class AgenticAssistant:
                 interaction_id=interaction.id,
             )
 
+        answer = await asyncio.to_thread(self._formatter.format, final_text, tools_called)
+
         return self._build_response(
             payload=payload,
             interaction=interaction,
-            text=final_text,
+            answer=answer,
             pending_action=pending_action,
         )
 
@@ -73,8 +77,10 @@ class AgenticAssistant:
         system_prompt: str,
         tools: list[dict[str, Any]],
         context: ToolContext,
-    ) -> tuple[str, dict[str, Any] | None]:
-        """Run the tool loop. Returns (final_text, pending_action_or_None)."""
+    ) -> tuple[str, dict[str, Any] | None, list[str]]:
+        """Run the tool loop. Returns (final_text, pending_action_or_None, tools_called)."""
+        tools_called: list[str] = []
+
         for _ in range(_MAX_TOOL_ITERATIONS):
             response = self._client.messages.create(
                 model=_MODEL,
@@ -87,32 +93,33 @@ class AgenticAssistant:
             text = next((b.text for b in response.content if hasattr(b, "text")), "")
 
             if response.stop_reason == "end_turn":
-                return text, None
+                return text, None, tools_called
 
             tool_uses = [b for b in response.content if b.type == "tool_use"]
             if not tool_uses:
-                return text, None
+                return text, None, tools_called
 
             # Surface the first write tool — if Claude batches multiple write tools in one
             # response, only the first is shown to the CEO. This is intentional: approval
             # is per-interaction, and batching multiple write actions in one turn is rare.
             for tool_use in tool_uses:
                 if is_write_tool(tool_use.name):
-                    return text, {"tool_name": tool_use.name, "tool_inputs": tool_use.input}
+                    tools_called.append(tool_use.name)
+                    return text, {"tool_name": tool_use.name, "tool_inputs": tool_use.input}, tools_called
 
             # Execute read tools and continue
             messages = messages + [{"role": "assistant", "content": response.content}]
-            tool_results = [
-                {
+            tool_results = []
+            for tool_use in tool_uses:
+                tools_called.append(tool_use.name)
+                tool_results.append({
                     "type": "tool_result",
                     "tool_use_id": tool_use.id,
                     "content": execute_tool(tool_use.name, tool_use.input, context),
-                }
-                for tool_use in tool_uses
-            ]
+                })
             messages = messages + [{"role": "user", "content": tool_results}]
 
-        return "Reached tool iteration limit. Please try a more specific question.", None
+        return "Reached tool iteration limit. Please try a more specific question.", None, tools_called
 
     def _build_system_prompt(self, user: User) -> str:
         prefs = get_ceo_preferences(user.ceo_id)
@@ -161,7 +168,7 @@ class AgenticAssistant:
         *,
         payload: AssistantQueryRequest,
         interaction: SessionInteraction,
-        text: str,
+        answer: AnswerPayload,
         pending_action: dict[str, Any] | None,
     ) -> AssistantMessageResponse:
         metadata: dict[str, Any] = {}
@@ -174,7 +181,7 @@ class AgenticAssistant:
             workflow_type="conversational",
             response_type="conversational",
             status="pending" if pending_action else "completed",
-            answer=AnswerPayload(title="", summary=text, sections=[]),
+            answer=answer,
             trust=TrustMetadata(),
             metadata=metadata,
         )
