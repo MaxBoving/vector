@@ -100,6 +100,9 @@ _EXTRACTION_PROMPTS: dict[str, str] = {
         "  Each section must synthesize and label — never copy sentences verbatim as a section body.\n"
         "  Return [] for answers that are 1-2 sentences, direct facts, or already well-structured prose.\n\n"
         "action_items: Include ONLY if the text explicitly states something the CEO must do.\n"
+        "  Each item MUST be a plain string — never an object or dict.\n"
+        "  Good: 'Send updated cap table to James Park by April 10'\n"
+        "  Bad: {\"action\": \"Send cap table\", \"deadline\": \"April 10\"}\n"
         "  Must be specific: include who, what, and when if mentioned in the text.\n"
         "  Return [] if the answer is purely informational with no stated next steps.\n\n"
         "one_liner: The single most important thing the CEO needs to know. Distill — don't restate."
@@ -136,18 +139,24 @@ class ResponseFormatter:
         if not extracted:
             return AnswerPayload(title="", summary=text, sections=[])
 
+        def _str_items(raw: Any) -> list[str]:
+            """Coerce items to strings — Haiku sometimes returns dicts."""
+            if not raw:
+                return []
+            return [i if isinstance(i, str) else json.dumps(i) for i in raw if i]
+
         sections = [
             AnswerSection(
                 label=s.get("label") or s.get("heading") or "",
                 content=s.get("content") or s.get("body") or "",
-                items=s.get("items") or [],
+                items=_str_items(s.get("items")),
             )
             for s in (extracted.get("sections") or [])
             if s.get("label") or s.get("heading")
         ]
 
         # Append action items as a dedicated section if present
-        action_items = extracted.get("action_items") or []
+        action_items = _str_items(extracted.get("action_items"))
         if action_items:
             sections.append(AnswerSection(label="Action Items", content="", items=action_items))
 
@@ -162,7 +171,7 @@ class ResponseFormatter:
         try:
             response = self._client.messages.create(
                 model=_HAIKU_MODEL,
-                max_tokens=512,
+                max_tokens=1024,
                 messages=[
                     {
                         "role": "user",

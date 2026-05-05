@@ -8,6 +8,7 @@ from __future__ import annotations
 
 from typing import Any
 
+from src.core.database import get_connected_account
 from src.integrations.providers import (
     ProviderIntegrationError,
     _fetch_gmail_threads,
@@ -81,6 +82,17 @@ class ReadEmailThreadsTool(BaseTool):
         except ProviderIntegrationError as exc:
             return ToolResult(tool_name=self.metadata.name, success=False, error=str(exc))
 
+        # Demo fallback — seeded data in ConnectedAccount[demo, gmail]
+        demo_account = get_connected_account(ceo_id, "demo", "gmail")
+        if demo_account and isinstance(demo_account.provider_metadata, dict):
+            payload = demo_account.provider_metadata.get("event_payload") or {}
+            threads = payload.get("ranked_threads") or []
+            return ToolResult(
+                tool_name=self.metadata.name,
+                success=True,
+                data={"threads": threads, "service": "demo_gmail", "count": len(threads)},
+            )
+
         return ToolResult(
             tool_name=self.metadata.name,
             success=False,
@@ -121,6 +133,17 @@ class ReadCalendarEventsTool(BaseTool):
                 )
         except ProviderIntegrationError as exc:
             return ToolResult(tool_name=self.metadata.name, success=False, error=str(exc))
+
+        # Demo fallback — seeded data in ConnectedAccount[demo, google_calendar]
+        demo_account = get_connected_account(ceo_id, "demo", "google_calendar")
+        if demo_account and isinstance(demo_account.provider_metadata, dict):
+            payload = demo_account.provider_metadata.get("event_payload") or {}
+            events = payload.get("upcoming_events") or []
+            return ToolResult(
+                tool_name=self.metadata.name,
+                success=True,
+                data={"events": events, "service": "demo_calendar", "count": len(events)},
+            )
 
         return ToolResult(
             tool_name=self.metadata.name,
