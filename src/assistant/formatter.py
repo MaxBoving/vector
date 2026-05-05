@@ -92,11 +92,17 @@ _EXTRACTION_PROMPTS: dict[str, str] = {
         "- one_liner: one sentence about the entity"
     ),
     "conversational": (
-        "Extract structure from this response. Return JSON with:\n"
-        "- title: string (short direct title, 5 words max)\n"
-        "- sections: array of {label, content, items} — only if the text has clear sections; empty array if not\n"
-        "- action_items: array of strings — only concrete next steps mentioned; empty array if none\n"
-        "- one_liner: one sentence summary"
+        "Structure this CEO assistant response. Return JSON with these fields:\n\n"
+        "title: A 2-5 word label that names the topic — NOT a sentence, NOT copied from the text.\n"
+        "  Good: 'Series B Readiness', 'Board Meeting Date', 'Hiring Freeze Policy'\n"
+        "  Bad: 'The board meeting is June 12th', 'Here is the information', 'Summary'\n\n"
+        "sections: Use sections ONLY when the answer contains 3+ distinct points that benefit from grouping.\n"
+        "  Each section must synthesize and label — never copy sentences verbatim as a section body.\n"
+        "  Return [] for answers that are 1-2 sentences, direct facts, or already well-structured prose.\n\n"
+        "action_items: Include ONLY if the text explicitly states something the CEO must do.\n"
+        "  Must be specific: include who, what, and when if mentioned in the text.\n"
+        "  Return [] if the answer is purely informational with no stated next steps.\n\n"
+        "one_liner: The single most important thing the CEO needs to know. Distill — don't restate."
     ),
 }
 
@@ -181,6 +187,14 @@ class ResponseFormatter:
 
 
 def _quick_title(text: str, response_type: str) -> str:
-    """Generate a minimal title without an LLM call."""
+    """Generate a minimal title without an LLM call.
+
+    For short answers the summary is the answer — a title that copies the text
+    adds no value, so return empty and let the frontend omit it.
+    """
     first_line = text.strip().split("\n")[0].lstrip("#").strip()
-    return first_line[:60] if first_line else ""
+    # Only use the first line as a title if it reads like a heading (ends without
+    # sentence punctuation and is short enough to be a label, not a sentence).
+    if first_line and len(first_line) <= 40 and not first_line[-1] in ".?!":
+        return first_line
+    return ""
