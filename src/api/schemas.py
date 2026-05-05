@@ -431,50 +431,6 @@ class EmailIngestionRequest(BaseModel):
     received_at: Optional[str] = None
 
 
-# ── OpenClaw webhook ──────────────────────────────────────────
-
-class OpenClawEmailData(BaseModel):
-    """Matches the payload OpenClaw's Gmail PubSub skill sends."""
-    sender: Optional[str] = None        # "from" field
-    subject: Optional[str] = None
-    content: Optional[str] = None       # full body
-    snippet: Optional[str] = None       # short preview (fallback if no body)
-    thread_id: Optional[str] = None     # Gmail threadId
-    message_id: Optional[str] = None    # Gmail messageId
-    labels: List[str] = Field(default_factory=list)
-    received_at: Optional[str] = None
-
-
-class OpenClawMessageData(BaseModel):
-    """Freeform chat message from any channel (WhatsApp, Slack, etc.)."""
-    text: str
-    channel: Optional[str] = None       # "whatsapp" | "slack" | "telegram" | …
-    sender_name: Optional[str] = None
-    conversation_id: Optional[str] = None
-
-
-class OpenClawCalendarData(BaseModel):
-    """Meeting/event notification from Google Calendar channel."""
-    meeting_id: Optional[str] = None
-    title: Optional[str] = None
-    starts_at: Optional[str] = None
-    attendees: List[str] = Field(default_factory=list)
-    agenda: Optional[str] = None
-    notes: Optional[str] = None
-
-
-class OpenClawWebhookPayload(BaseModel):
-    event: Literal["email", "message", "calendar"]
-    data: Dict[str, Any]
-    channel: Optional[str] = None      # originating channel label
-
-
-class OpenClawWebhookResponse(BaseModel):
-    ok: bool
-    event: str
-    interaction_id: Optional[int] = None
-    summary: Optional[str] = None
-
 
 class CalendarBriefingRequest(BaseModel):
     meeting_id: Optional[str] = None

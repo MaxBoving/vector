@@ -71,7 +71,7 @@ class ToolRegistry:
 
 def build_default_tool_registry() -> ToolRegistry:
     from .artifact_tools import ListArtifactsTool, ReadArtifactTool, WriteArtifactTool
-    from .connector_tools import ConnectorStatusTool, ReadCalendarEventsTool, ReadEmailThreadsTool, SendEmailDraftTool
+    from .connector_tools import ConnectorStatusTool, CreateCalendarEventTool, ReadCalendarEventsTool, ReadEmailThreadsTool, SendEmailDraftTool
     from .coauthoring_tool import CoauthoringTool
     from .document_tools import (
         CreateCanvasTool,
@@ -147,6 +147,7 @@ def build_default_tool_registry() -> ToolRegistry:
             ReadEmailThreadsTool(),
             ReadCalendarEventsTool(),
             SendEmailDraftTool(),
+            CreateCalendarEventTool(),
             # Connectors — Google Drive
             GoogleDriveSearchTool(),
             GoogleDriveReadTool(),

@@ -38,17 +38,6 @@ def init_db():
             row[1]
             for row in connection.exec_driver_sql("PRAGMA table_info(user)").fetchall()
         }
-        if "openclaw_webhook_token" not in user_columns:
-            connection.exec_driver_sql("ALTER TABLE user ADD COLUMN openclaw_webhook_token VARCHAR")
-        existing_indexes = {
-            row[1]
-            for row in connection.exec_driver_sql("PRAGMA index_list(user)").fetchall()
-        }
-        if "ix_user_openclaw_webhook_token" not in existing_indexes:
-            connection.exec_driver_sql(
-                "CREATE UNIQUE INDEX IF NOT EXISTS ix_user_openclaw_webhook_token "
-                "ON user (openclaw_webhook_token)"
-            )
         thread_columns = {
             row[1]
             for row in connection.exec_driver_sql("PRAGMA table_info(conversationthreadentry)").fetchall()
@@ -888,28 +877,6 @@ def get_user(username: str) -> Optional[User]:
         return session.exec(statement).first()
 
 
-def get_user_by_openclaw_token(token: str) -> Optional[User]:
-    """Look up a user by their opaque OpenClaw webhook token."""
-    with Session(engine) as session:
-        statement = select(User).where(User.openclaw_webhook_token == token)
-        return session.exec(statement).first()
-
-
-def rotate_openclaw_token(ceo_id: str) -> str:
-    """Generate (or replace) the OpenClaw webhook token for this CEO.
-
-    Returns the new token.  The old token is immediately invalidated — any
-    OpenClaw skill configs pointing at the old URL must be updated.
-    """
-    new_token = secrets.token_hex(32)   # 64 hex chars, 256 bits of entropy
-    with Session(engine) as session:
-        user = session.exec(select(User).where(User.ceo_id == ceo_id)).first()
-        if not user:
-            raise ValueError(f"No user found for ceo_id '{ceo_id}'")
-        user.openclaw_webhook_token = new_token
-        session.add(user)
-        session.commit()
-    return new_token
 
 def update_company_state(company_name: str, updates: dict[str, Any]) -> Optional[CompanyState]:
     """

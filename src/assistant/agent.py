@@ -5,6 +5,7 @@ short-circuit and are stored for CEO approval via approval.py.
 """
 from __future__ import annotations
 
+import asyncio
 import os
 from typing import Any
 
@@ -20,6 +21,7 @@ from src.core.database import get_ceo_preferences, get_session_history
 from src.core.models import SessionInteraction, User
 from src.tools.base import ToolContext
 from src.assistant.approval import is_write_tool, store_pending_action
+from src.assistant.formatter import ResponseFormatter
 from src.assistant.sdk_tools import execute_tool, get_anthropic_tools
 
 _MODEL = os.getenv("ANTHROPIC_MODEL", "claude-opus-4-6")
@@ -29,6 +31,7 @@ _MAX_TOOL_ITERATIONS = 10
 class AgenticAssistant:
     def __init__(self) -> None:
         self._client = anthropic.Anthropic()
+        self._formatter = ResponseFormatter()
 
     async def handle(
         self,
@@ -42,13 +45,14 @@ class AgenticAssistant:
             ceo_id=ceo_id,
             interaction_id=interaction.id,
             company_name=current_user.company_name,
+            conversation_id=payload.conversation_id,
         )
-        system_prompt = self._build_system_prompt(current_user)
-        history = self._load_history(ceo_id)
+        system_prompt = await asyncio.to_thread(self._build_system_prompt, current_user)
+        history = await asyncio.to_thread(self._load_history, ceo_id)
         messages: list[dict[str, Any]] = history + [{"role": "user", "content": payload.message}]
         tools = get_anthropic_tools()
 
-        final_text, pending_action = self._run_tool_loop(messages, system_prompt, tools, context)
+        final_text, pending_action, tools_called = self._run_tool_loop(messages, system_prompt, tools, context)
 
         if pending_action:
             store_pending_action(
@@ -59,10 +63,12 @@ class AgenticAssistant:
                 interaction_id=interaction.id,
             )
 
+        answer = await asyncio.to_thread(self._formatter.format, final_text, tools_called)
+
         return self._build_response(
             payload=payload,
             interaction=interaction,
-            text=final_text,
+            answer=answer,
             pending_action=pending_action,
         )
 
@@ -72,8 +78,10 @@ class AgenticAssistant:
         system_prompt: str,
         tools: list[dict[str, Any]],
         context: ToolContext,
-    ) -> tuple[str, dict[str, Any] | None]:
-        """Run the tool loop. Returns (final_text, pending_action_or_None)."""
+    ) -> tuple[str, dict[str, Any] | None, list[str]]:
+        """Run the tool loop. Returns (final_text, pending_action_or_None, tools_called)."""
+        tools_called: list[str] = []
+
         for _ in range(_MAX_TOOL_ITERATIONS):
             response = self._client.messages.create(
                 model=_MODEL,
@@ -86,47 +94,65 @@ class AgenticAssistant:
             text = next((b.text for b in response.content if hasattr(b, "text")), "")
 
             if response.stop_reason == "end_turn":
-                return text, None
+                return text, None, tools_called
 
             tool_uses = [b for b in response.content if b.type == "tool_use"]
             if not tool_uses:
-                return text, None
+                return text, None, tools_called
 
             # Surface the first write tool — if Claude batches multiple write tools in one
             # response, only the first is shown to the CEO. This is intentional: approval
             # is per-interaction, and batching multiple write actions in one turn is rare.
             for tool_use in tool_uses:
                 if is_write_tool(tool_use.name):
-                    return text, {"tool_name": tool_use.name, "tool_inputs": tool_use.input}
+                    tools_called.append(tool_use.name)
+                    return text, {"tool_name": tool_use.name, "tool_inputs": tool_use.input}, tools_called
 
             # Execute read tools and continue
             messages = messages + [{"role": "assistant", "content": response.content}]
-            tool_results = [
-                {
+            tool_results = []
+            for tool_use in tool_uses:
+                tools_called.append(tool_use.name)
+                tool_results.append({
                     "type": "tool_result",
                     "tool_use_id": tool_use.id,
                     "content": execute_tool(tool_use.name, tool_use.input, context),
-                }
-                for tool_use in tool_uses
-            ]
+                })
             messages = messages + [{"role": "user", "content": tool_results}]
 
-        return "Reached tool iteration limit. Please try a more specific question.", None
+        return "Reached tool iteration limit. Please try a more specific question.", None, tools_called
 
     def _build_system_prompt(self, user: User) -> str:
         prefs = get_ceo_preferences(user.ceo_id)
         company = user.company_name or "your company"
         lines = [
             f"You are an executive AI assistant for the CEO of {company}.",
-            "You have tools to read email, calendar, company data, documents, memory, and more.",
-            "Be direct, concise, and executive-facing.",
-            "For write actions (send_email_draft, slack_post, create_*), call the tool — "
-            "it will be shown to the CEO for approval before execution.",
+            "Be direct, concise, and executive-facing. No filler, no preamble.",
+            "",
+            "## When to use tools",
+            "- Email or inbox questions → read_email_threads",
+            "- Schedule or meeting questions → read_calendar_events",
+            "- What to focus on, priorities, open items → get_live_context, get_recent_signals",
+            "- Company metrics, financials, or strategy → get_company_state",
+            "- Specific person or company mentioned → get_entity_context",
+            "- Past conversations or prior decisions → get_thread_entries, semantic_search",
+            "- After answering, note key decisions/commitments the CEO made → write_thread_entry",
+            "- Observe a recurring pressure or mode shift → update_situational_profile",
+            "- CRM deals or pipeline → crm_deal_context",
+            "- Slack channels or messages → slack_read",
+            "",
+            "Call tools before answering when the question needs real data. "
+            "Don't speculate — if you need data, fetch it.",
+            "",
+            "## Write actions",
+            "send_email_draft, slack_post, and create_calendar_event require CEO approval — call the tool and it will be shown for confirmation.",
+            "Document creation (create_docx_memo, create_pptx_deck, create_workbook, create_canvas) executes immediately.",
+            "- To save something the CEO said for future sessions → memory_management with action=save",
         ]
         if prefs and prefs.priority_senders:
-            lines.append(f"Priority senders: {', '.join(list(prefs.priority_senders)[:5])}")
+            lines.append(f"\nPriority senders: {', '.join(list(prefs.priority_senders)[:5])}")
         if prefs and prefs.ignored_senders:
-            lines.append(f"Ignore emails from: {', '.join(list(prefs.ignored_senders)[:5])}")
+            lines.append(f"Deprioritize emails from: {', '.join(list(prefs.ignored_senders)[:5])}")
         return "\n".join(lines)
 
     def _load_history(self, ceo_id: str) -> list[dict[str, Any]]:
@@ -145,7 +171,7 @@ class AgenticAssistant:
         *,
         payload: AssistantQueryRequest,
         interaction: SessionInteraction,
-        text: str,
+        answer: AnswerPayload,
         pending_action: dict[str, Any] | None,
     ) -> AssistantMessageResponse:
         metadata: dict[str, Any] = {}
@@ -158,7 +184,7 @@ class AgenticAssistant:
             workflow_type="conversational",
             response_type="conversational",
             status="pending" if pending_action else "completed",
-            answer=AnswerPayload(title="", summary=text, sections=[]),
+            answer=answer,
             trust=TrustMetadata(),
             metadata=metadata,
         )

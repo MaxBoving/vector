@@ -98,7 +98,16 @@ async def assistant_query(
     )
 
     try:
-        return await generate_native_assistant_response(payload, saved_interaction, current_user)
+        result = await generate_native_assistant_response(payload, saved_interaction, current_user)
+        with Session(engine) as session:
+            stored = session.get(SessionInteraction, saved_interaction.id)
+            if stored:
+                stored.status = "COMPLETED"
+                stored.response = result.answer.summary
+                stored.last_updated = datetime.now().isoformat()
+                session.add(stored)
+                session.commit()
+        return result
     except Exception as exc:
         with Session(engine) as session:
             stored_interaction = session.get(SessionInteraction, saved_interaction.id)
@@ -127,7 +136,15 @@ async def resolve_assistant_message(
     resolution: ApprovalResolutionRequest,
     current_user: User = Depends(get_current_user),
 ):
-    conversation_id = resolution.conversation_id or ""
+    conversation_id = resolution.conversation_id
+    if not conversation_id:
+        # Recover conversation_id from the interaction → conversation mapping
+        for conv in list_assistant_conversations(current_user.ceo_id):
+            if interaction_id in (conv.interaction_ids or []):
+                conversation_id = conv.conversation_id
+                break
+    if not conversation_id:
+        raise HTTPException(status_code=404, detail="Conversation not found for this interaction.")
     try:
         if resolution.decision == "approve":
             action_result = execute_approval(

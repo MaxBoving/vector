@@ -40,15 +40,22 @@ READ_TOOL_NAMES: frozenset[str] = frozenset({
     "extract_pdf",
     "variance_analysis",
     "execute_math",
-})
-
-WRITE_TOOL_NAMES: frozenset[str] = frozenset({
-    "send_email_draft",
-    "slack_post",
+    "memory_management",
+    # Internal context writes — no external side effects, no approval needed
+    "write_thread_entry",
+    "update_situational_profile",
+    # Artifact creation executes immediately — CEO requested it, no approval needed
     "create_docx_memo",
     "create_pptx_deck",
     "create_workbook",
     "create_canvas",
+})
+
+# Only actions that send to external parties or mutate external state require approval
+WRITE_TOOL_NAMES: frozenset[str] = frozenset({
+    "send_email_draft",
+    "slack_post",
+    "create_calendar_event",
 })
 
 EXPOSED_TOOL_NAMES: frozenset[str] = READ_TOOL_NAMES | WRITE_TOOL_NAMES
@@ -124,9 +131,13 @@ _SCHEMAS: dict[str, dict[str, Any]] = {
     "get_entity_context": {
         "type": "object",
         "properties": {
-            "entity_name": {"type": "string", "description": "Company or person name to look up"},
+            "entities": {
+                "type": "string",
+                "description": "Comma-separated names to look up (e.g. 'Sequoia Capital, John Smith')",
+            },
+            "limit": {"type": "integer", "description": "Max results per entity (default 10)"},
         },
-        "required": ["entity_name"],
+        "required": ["entities"],
     },
     "get_thread_entries": {
         "type": "object",
@@ -269,6 +280,74 @@ _SCHEMAS: dict[str, dict[str, Any]] = {
             "content": {"type": "string", "description": "Canvas content"},
         },
         "required": ["title", "content"],
+    },
+    "write_thread_entry": {
+        "type": "object",
+        "properties": {
+            "entry_type": {
+                "type": "string",
+                "enum": ["schedule", "decision", "commitment", "contribution", "observation"],
+                "description": "Type of entry: decision/commitment for CEO choices, observation for what you noticed, contribution for general notes",
+            },
+            "content": {"type": "string", "description": "Plain text content of the entry"},
+            "entities": {
+                "type": "array",
+                "items": {"type": "string"},
+                "description": "Named entities mentioned (people, companies, deals)",
+            },
+        },
+        "required": ["entry_type", "content"],
+    },
+    "update_situational_profile": {
+        "type": "object",
+        "properties": {
+            "operating_mode": {
+                "type": "string",
+                "description": "CEO's current operating mode (e.g. 'fundraising', 'crisis', 'growth')",
+            },
+            "add_pressure": {"type": "string", "description": "A new active pressure to record"},
+            "remove_pressure": {"type": "string", "description": "An active pressure to remove"},
+            "topic_mention": {"type": "string", "description": "A recurring topic to increment"},
+            "resolve_topic": {"type": "string", "description": "A recurring topic to mark resolved"},
+            "add_obligation": {"type": "string", "description": "A new relationship obligation to track"},
+        },
+        "required": [],
+    },
+    "memory_management": {
+        "type": "object",
+        "properties": {
+            "action": {
+                "type": "string",
+                "enum": ["save", "list", "search", "delete"],
+                "description": "save: persist a fact; list: all memories; search: semantic search; delete: remove by ID",
+            },
+            "title": {"type": "string", "description": "Short title for the memory (required for save)"},
+            "content": {"type": "string", "description": "Full text of the fact to save (required for save)"},
+            "memory_type": {
+                "type": "string",
+                "enum": ["decision", "commitment", "preference", "fact", "milestone"],
+                "description": "Category of memory (default: fact)",
+            },
+            "query": {"type": "string", "description": "Search query (for search action)"},
+            "memory_id": {"type": "string", "description": "Memory ID to delete (for delete action)"},
+        },
+        "required": ["action"],
+    },
+    "create_calendar_event": {
+        "type": "object",
+        "properties": {
+            "title": {"type": "string", "description": "Event title"},
+            "starts_at": {"type": "string", "description": "Start time in ISO 8601 format (e.g. 2026-05-10T09:00:00)"},
+            "ends_at": {"type": "string", "description": "End time in ISO 8601 format"},
+            "timezone": {"type": "string", "description": "IANA timezone (default UTC, e.g. America/New_York)"},
+            "attendees": {
+                "type": "array",
+                "items": {"type": "string"},
+                "description": "List of attendee email addresses",
+            },
+            "description": {"type": "string", "description": "Event description or agenda"},
+        },
+        "required": ["title", "starts_at", "ends_at"],
     },
 }
 
