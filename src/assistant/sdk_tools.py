@@ -41,6 +41,9 @@ READ_TOOL_NAMES: frozenset[str] = frozenset({
     "variance_analysis",
     "execute_math",
     "memory_management",
+    # Internal context writes — no external side effects, no approval needed
+    "write_thread_entry",
+    "update_situational_profile",
     # Artifact creation executes immediately — CEO requested it, no approval needed
     "create_docx_memo",
     "create_pptx_deck",
@@ -277,6 +280,38 @@ _SCHEMAS: dict[str, dict[str, Any]] = {
             "content": {"type": "string", "description": "Canvas content"},
         },
         "required": ["title", "content"],
+    },
+    "write_thread_entry": {
+        "type": "object",
+        "properties": {
+            "entry_type": {
+                "type": "string",
+                "enum": ["schedule", "decision", "commitment", "contribution", "observation"],
+                "description": "Type of entry: decision/commitment for CEO choices, observation for what you noticed, contribution for general notes",
+            },
+            "content": {"type": "string", "description": "Plain text content of the entry"},
+            "entities": {
+                "type": "array",
+                "items": {"type": "string"},
+                "description": "Named entities mentioned (people, companies, deals)",
+            },
+        },
+        "required": ["entry_type", "content"],
+    },
+    "update_situational_profile": {
+        "type": "object",
+        "properties": {
+            "operating_mode": {
+                "type": "string",
+                "description": "CEO's current operating mode (e.g. 'fundraising', 'crisis', 'growth')",
+            },
+            "add_pressure": {"type": "string", "description": "A new active pressure to record"},
+            "remove_pressure": {"type": "string", "description": "An active pressure to remove"},
+            "topic_mention": {"type": "string", "description": "A recurring topic to increment"},
+            "resolve_topic": {"type": "string", "description": "A recurring topic to mark resolved"},
+            "add_obligation": {"type": "string", "description": "A new relationship obligation to track"},
+        },
+        "required": [],
     },
     "memory_management": {
         "type": "object",

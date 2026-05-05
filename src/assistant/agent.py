@@ -45,6 +45,7 @@ class AgenticAssistant:
             ceo_id=ceo_id,
             interaction_id=interaction.id,
             company_name=current_user.company_name,
+            conversation_id=payload.conversation_id,
         )
         system_prompt = await asyncio.to_thread(self._build_system_prompt, current_user)
         history = await asyncio.to_thread(self._load_history, ceo_id)
@@ -135,6 +136,8 @@ class AgenticAssistant:
             "- Company metrics, financials, or strategy → get_company_state",
             "- Specific person or company mentioned → get_entity_context",
             "- Past conversations or prior decisions → get_thread_entries, semantic_search",
+            "- After answering, note key decisions/commitments the CEO made → write_thread_entry",
+            "- Observe a recurring pressure or mode shift → update_situational_profile",
             "- CRM deals or pipeline → crm_deal_context",
             "- Slack channels or messages → slack_read",
             "",
