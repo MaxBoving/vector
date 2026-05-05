@@ -10,11 +10,6 @@ class User(SQLModel, table=True):
     hashed_password: str
     ceo_id: str = Field(unique=True)
     company_name: str
-    # Per-CEO opaque token for OpenClaw webhook auth.
-    # Stored as 64-char hex (32 random bytes).  Also used as the HMAC key so
-    # there is no shared secret — rotating the token invalidates all prior
-    # signatures for this CEO only.
-    openclaw_webhook_token: Optional[str] = Field(default=None, index=True, unique=True)
 
 class RiskTolerance(str, Enum):
     CONSERVATIVE = "conservative"
