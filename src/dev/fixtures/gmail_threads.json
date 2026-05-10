@@ -1,0 +1,361 @@
+{
+  "ranked_threads": [
+    {
+      "thread_id": "thread_dana_001",
+      "subject": "Re: Q1 board packet",
+      "sender": "Dana Whitfield <dana.whitfield@emergence.vc>",
+      "received_at": "2026-03-27T16:42:11-07:00",
+      "importance_level": "critical",
+      "importance_score": 0.97,
+      "importance_reasons": [
+        "Board member requesting Q1 packet before April 15 meeting",
+        "NRR methodology flagged by another board member — needs footnote fix",
+        "Ironstone deal credibility question from a board member",
+        "Logistics detail (Marcus arriving late) needs acknowledgment"
+      ],
+      "category": "board",
+      "snippet": "Dana is asking for the board packet by EOD and flagging Priya's concern about the NRR slide methodology footnote. She also wants to know if the Ironstone deal is real.",
+      "body_preview": "Jordan — thanks for the draft agenda, looks solid. Can you get me the full board packet by EOD today? Priya flagged that the NRR slide is missing a methodology footnote — something about how you're handling churned seat expansions within the same account. Not a blocker but it'll come up. Also heads up that Marcus is arriving 10 minutes late to the Apr 15 meeting due to a flight, so plan to hold the first item. One more thing: I keep hearing about a deal called Ironstone from you and Tyler — is that a real pipeline opportunity or still exploratory? If it's as big as Tyler implied, it should probably be in the board materials. Let me know.",
+      "is_read": false,
+      "has_replied": false,
+      "message_count": 2
+    },
+    {
+      "thread_id": "thread_rachel_q1",
+      "subject": "Q1 final attainment + rep breakdown",
+      "sender": "Rachel Odom <rachel@vela.io>",
+      "received_at": "2026-03-27T09:15:00-07:00",
+      "importance_level": "critical",
+      "importance_score": 0.91,
+      "importance_reasons": [
+        "Q1 final attainment exceeds plan at 103%",
+        "Two reps below 70% threshold — performance risk",
+        "Asks to discuss Tyler before all-hands"
+      ],
+      "category": "internal",
+      "snippet": "Team landed at 103% of Q1 plan — $1.82M new ARR vs $1.77M. Two reps below 70% threshold, including Tyler Ng for the second consecutive quarter.",
+      "body_preview": "Jordan — final Q1 numbers are in. Team landed at 103% of plan: $1.82M new ARR vs $1.77M plan. Here's the rep breakdown: Derek Chen 142%, Priya Moss 118%, Tyler Ng 71% (second consecutive quarter below 70%), Samira Khoury 68%. Derek and Priya carried the quarter. Samira's pipeline looks healthier going into Q2 so I'm not panicking there yet. Tyler is the bigger concern — two consecutive quarters below 70% puts us in PIP territory per comp plan policy. I want to talk through the Tyler situation with you before the all-hands Monday. Can we grab 20 minutes Friday or over the weekend? I'll have a recommendation ready.",
+      "is_read": true,
+      "has_replied": false,
+      "message_count": 1
+    },
+    {
+      "thread_id": "thread_omni_renewal",
+      "subject": "Re: Re: Re: Omni Logistics renewal — April 1",
+      "sender": "Derek Kane <dkane@omnilogistics.com>",
+      "received_at": "2026-03-26T14:08:00-07:00",
+      "importance_level": "critical",
+      "importance_score": 0.88,
+      "importance_reasons": [
+        "Major customer renewal at risk — April 1 deadline",
+        "Usage down significantly since February integration issue",
+        "Customer requesting discount and roadmap commitments"
+      ],
+      "category": "customer",
+      "snippet": "Derek Kane at Omni Logistics says they're still not seeing value from Forecast Engine and wants an honest conversation about the April 1 renewal. He's open to renewing but wants a discount and roadmap commitments.",
+      "body_preview": "Jordan — I appreciate you reaching out directly. I'll be straight with you: we're still not seeing the value from Forecast Engine that we expected when we signed. Usage across our team has dropped significantly since the February integration issue, and frankly a lot of reps just stopped trusting the forecasts. I want to have an honest conversation before April 1 — not a sales call, an honest one. I'm not opposed to renewing. We believe in what you're building. But I need two things: first, a realistic discount that reflects the value we actually received this year, not the value we were promised. Second, a concrete roadmap commitment on the mobile sync fix with a date I can hold you to. If you can come to the table on both of those, we can probably get this done. If you can't, we need to talk about an exit. Let me know when you're free.",
+      "is_read": true,
+      "has_replied": false,
+      "message_count": 7
+    },
+    {
+      "thread_id": "thread_ironstone_001",
+      "subject": "Re: Ironstone Capital — executive review",
+      "sender": "David Park <dpark@ironstonecapital.com>",
+      "received_at": "2026-03-26T11:30:00-07:00",
+      "importance_level": "critical",
+      "importance_score": 0.95,
+      "importance_reasons": [
+        "High-value prospect close to signature",
+        "Legal has one redline on data residency — EU carve-out needed",
+        "CRO fully bought in — deal can close next week if legal resolved"
+      ],
+      "category": "prospect",
+      "snippet": "Ironstone Capital is nearly at signature — legal has one redline on data residency (section 8.3, EU carve-out). CRO is fully bought in and they can get to signature next week if resolved.",
+      "body_preview": "Jordan — great call yesterday with the team. We're very close. Legal came back with one redline and only one: section 8.3, data residency. They need an EU carve-out clause specifying that EU-sourced pipeline data can be processed and stored within the EU or in a country with an adequacy decision. This is standard for our portfolio companies given GDPR exposure. If you can confirm that's something Vela can accommodate — either technically or contractually — we can get to signature next week. Our CRO is fully bought in and has been pushing legal to move fast. I don't want to lose momentum. Can you confirm the data residency position by end of week? Happy to get on a quick call if it helps.",
+      "is_read": false,
+      "has_replied": false,
+      "message_count": 6
+    },
+    {
+      "thread_id": "thread_summit_legal",
+      "subject": "Re: intro — Summit Retail / Vela",
+      "sender": "Chris Baxter <chris.baxter@summitretail.co>",
+      "received_at": "2026-03-25T16:55:00-07:00",
+      "importance_level": "high",
+      "importance_score": 0.82,
+      "importance_reasons": [
+        "Active prospect with MSA redlines in flight",
+        "Liability cap disagreement (2x vs 1x) is a material issue",
+        "General Counsel availability may delay April 7 call"
+      ],
+      "category": "prospect",
+      "snippet": "Summit Retail's legal team sent MSA redlines — main sticking point is liability cap (they want 1x, Vela sent 2x). GC may not be available April 7 and wants 24h confirmation.",
+      "body_preview": "Jordan — update from our side. Legal finished their review and sent redlines earlier today — look for the document titled 'Summit Retail - MSA redlines v2' in your inbox or from our counsel at Harmon & Associates. The main issue is the liability cap. We sent language capping at 2x fees paid in the trailing 12 months; our General Counsel came back requesting 1x. I know that's a common sticking point and I'm not sure where Vela lands on it, but I wanted to flag it before the April 7 call so we're not surprised in the room. One logistics note: our General Counsel may not be available April 7 — she has a conflict that's still resolving. Can you confirm the call 24 hours in advance? We'll do the same on our end. Looking forward to getting this wrapped up. [NOTE: sender email chris.baxter@summitretail.co may be incorrect — previous correspondence used @summitretail.com]",
+      "is_read": true,
+      "has_replied": true,
+      "message_count": 9
+    },
+    {
+      "thread_id": "thread_priya_board",
+      "subject": "Audit committee prep — Apr 15",
+      "sender": "Priya Anand <priya.anand@gmail.com>",
+      "received_at": "2026-03-24T08:20:00-07:00",
+      "importance_level": "high",
+      "importance_score": 0.86,
+      "importance_reasons": [
+        "Audit committee will discuss CFO vacancy and timeline",
+        "$34K misc line flagged — needs explanation ready",
+        "Multiple versions of Q1 board deck in Drive — risk of using wrong one"
+      ],
+      "category": "board",
+      "snippet": "Priya Anand flagging audit committee prep items: CFO vacancy timeline will come up, the $34K misc line raised a flag, and there are three versions of the Q1 board deck in Drive — needs to be clarified which is final.",
+      "body_preview": "Jordan — wanted to give you a heads up on a few things before the audit committee session on April 15. First, the CFO vacancy is going to come up. The committee will want to know the search timeline, whether you have an interim plan, and what the impact is on the Series B close process. Be ready with a specific answer, not a general one. Second, the $34K misc line in February caught my eye during the pre-read. It's not a blocker, but you should have an explanation ready — what's in it, why it wasn't broken out. Farrukh should be able to give you that. Third — and this one surprised me — I found three different versions of the Q1 board deck in the shared Drive folder. Please make sure your team knows which one is final and archive the others before the meeting. See you on the 15th.",
+      "is_read": true,
+      "has_replied": false,
+      "message_count": 1
+    },
+    {
+      "thread_id": "thread_sam_roadmap",
+      "subject": "Re: Re: H1 roadmap alignment",
+      "sender": "Sam Park <sam@vela.io>",
+      "received_at": "2026-03-25T17:40:00-07:00",
+      "importance_level": "medium",
+      "importance_score": 0.71,
+      "importance_reasons": [
+        "Headcount model has stale data — 19 vs 21 actual engineers",
+        "H1 roadmap doc in Drive is outdated — Notion version is current"
+      ],
+      "category": "internal",
+      "snippet": "Sam Park flagging two data integrity issues: the engineering headcount model is off by 2 (two contractors converted to FTE in January), and the H1 roadmap in Drive is from November — Notion has the current version.",
+      "body_preview": "Jordan — two things I want to flag before the board packet goes out. First: Farrukh's headcount model shows 19 engineers. We actually have 21. Two contractors were converted to FTE in January — I thought someone updated the model but apparently not. This affects the cost projections if the board is looking at fully-loaded eng headcount costs. Second: the H1 roadmap document in Drive is from November. I updated the roadmap in Notion in January after the planning session but never synced it back to Drive. The Notion version is the one the team is actually working from. If anyone pulls the Drive doc for the board materials it's going to show the wrong priorities. I can sync it this week if you want, just tell me which format you need it in.",
+      "is_read": true,
+      "has_replied": false,
+      "message_count": 3
+    },
+    {
+      "thread_id": "thread_crestline_escalation",
+      "subject": "Re: Re: Re: Re: Re: Integration issue — URGENT",
+      "sender": "Janet Wu <janet.wu@crestlinehealth.com>",
+      "received_at": "2026-03-23T10:15:00-07:00",
+      "importance_level": "high",
+      "importance_score": 0.84,
+      "importance_reasons": [
+        "Customer escalation open 3 weeks with no resolution",
+        "Salesforce sync bug affecting 30% of reps",
+        "CRO involvement — churn risk is high",
+        "Multiple missed fix commitments from Vela team"
+      ],
+      "category": "customer",
+      "snippet": "Janet Wu at Crestline Health is escalating a Salesforce sync issue open for 3 weeks — CRO is now involved, Tyler's team promised fixes in February and March that never shipped, and 6 weeks of pipeline data may be corrupted.",
+      "body_preview": "Jordan — I'm looping in my CRO because this has gone on too long. We've had an open ticket for three weeks. The issue: Salesforce sync breaks whenever a contact record is updated from the mobile app. This affects approximately 30% of our reps who work primarily from mobile. Your team acknowledged the bug in February and promised a fix by end of February. Then end of March. It's still not fixed. My CRO's question is a fair one: why are we paying for a tool that doesn't reliably integrate with Salesforce? Beyond the integration reliability question, we're now looking at six weeks of pipeline data that may be inaccurate because of this bug. I need three things: a committed fix timeline with an actual date, a clear explanation of what your team is going to do about the bad data, and a direct response from you — not Tyler's team — because we've heard from Tyler's team twice already. I need to show my CRO that Vela leadership takes this seriously.",
+      "is_read": true,
+      "has_replied": false,
+      "message_count": 11
+    },
+    {
+      "thread_id": "thread_sfdc_notif_001",
+      "subject": "Salesforce: Deal stage updated — Apex Manufacturing",
+      "sender": "noreply@salesforce.com",
+      "received_at": "2026-03-21T08:00:00-07:00",
+      "importance_level": "low",
+      "importance_score": 0.18,
+      "importance_reasons": [
+        "Automated Salesforce notification",
+        "Close date pushed — may indicate deal slippage"
+      ],
+      "category": "automated",
+      "snippet": "Automated Salesforce notification: Apex Manufacturing opportunity close date updated from 2026-02-28 to 2026-03-31 by lena.v@vela.io.",
+      "body_preview": "This is an automated notification from Salesforce. Opportunity record updated. Account: Apex Manufacturing. Opportunity Name: Apex Manufacturing - Vela Platform. Updated by: lena.v@vela.io. Field changed: Close Date. Old value: 2026-02-28. New value: 2026-03-31. Stage: Negotiation. No action required. To manage your notification preferences, visit your Salesforce profile settings.",
+      "is_read": false,
+      "has_replied": false,
+      "message_count": 1
+    },
+    {
+      "thread_id": "thread_github_notif_001",
+      "subject": "Re: [vela-app] Review requested: feat/forecast-v2 by nina-cho",
+      "sender": "notifications@github.com",
+      "received_at": "2026-03-27T11:22:00-07:00",
+      "importance_level": "low",
+      "importance_score": 0.05,
+      "importance_reasons": [
+        "Automated GitHub notification",
+        "Jordan incorrectly added to CODEOWNERS — notification not relevant"
+      ],
+      "category": "automated",
+      "snippet": "GitHub notification: nina-cho requested a review on PR #2847 (feat/forecast-v2). Note that jordan@vela.io was added to CODEOWNERS incorrectly — this notification can be ignored.",
+      "body_preview": "nina-cho requested your review on pull request #2847 in vela-app. PR title: feat/forecast-v2 — improved confidence intervals for deal scoring. Branch: feat/forecast-v2 → main. Note: jordan@vela.io was added to the CODEOWNERS file for the /src/ml directory incorrectly in a recent update. You are receiving this notification as a result. Please ignore or unsubscribe from CODEOWNERS notifications for this path. The engineering team has been notified and will correct the CODEOWNERS file.",
+      "is_read": false,
+      "has_replied": false,
+      "message_count": 1
+    },
+    {
+      "thread_id": "thread_marcus_intro",
+      "subject": "Re: Intro: Jordan Kessler <> Halo Ventures",
+      "sender": "Marcus Tell <mtell@angellist.io>",
+      "received_at": "2026-03-20T14:30:00-07:00",
+      "importance_level": "medium",
+      "importance_score": 0.68,
+      "importance_reasons": [
+        "Warm intro to Halo Ventures Head of RevOps",
+        "Halo Ventures evaluating pipeline intelligence tools for portfolio"
+      ],
+      "category": "prospect",
+      "snippet": "Marcus Tell looping in Raj Patel, Head of RevOps at Halo Ventures, who is evaluating pipeline intelligence tools across the portfolio.",
+      "body_preview": "Jordan — looping in Raj Patel, Head of RevOps at Halo Ventures, who I mentioned last month. Raj, Jordan is CEO of Vela — they're the pipeline intelligence platform I've been telling you about. I'll let Jordan speak to what Vela does, but the short version is they turn your CRM data into accurate revenue forecasts with less manual rep input. Raj's note to me last week (forwarded below) speaks for itself. I think there's a natural fit here given Halo's portfolio concentration in mid-market SaaS. I'll let you two take it from here. --- Forwarded message --- From: Raj Patel <raj.patel@haloventures.com> Marcus — been thinking more about our conversation on the pipeline AI space. We're evaluating 3-4 vendors right now for a tool we can recommend across the portfolio. Who do you think is worth a serious look?",
+      "is_read": true,
+      "has_replied": true,
+      "message_count": 3
+    },
+    {
+      "thread_id": "thread_farrukh_burn",
+      "subject": "Re: February burn — heads up",
+      "sender": "Farrukh Tashkentov <farrukh@vela.io>",
+      "received_at": "2026-03-15T09:00:00-07:00",
+      "importance_level": "medium",
+      "importance_score": 0.74,
+      "importance_reasons": [
+        "February burn 10% over plan at $934K vs $850K",
+        "$34K misc line needs itemization before board meeting",
+        "Cloud infra spike tied to ML model training runs"
+      ],
+      "category": "internal",
+      "snippet": "February burn came in at $934K vs $850K plan — two drivers: $48K cloud infra overage (ML inference compute) and a $34K misc catch-all that needs to be broken out properly.",
+      "body_preview": "Jordan — wanted to give you a heads up on February burn before it shows up in the board pre-read. We came in at $934K vs $850K plan, so about 10% over. Two main drivers. First, cloud infra spiked $48K over plan. That's almost entirely ML inference compute — we ran several large training jobs for the new forecast model in February and didn't budget for the scale of compute required. We have better estimates now and March should normalize. Second, the $34K misc line is a catch-all that I'm not happy with. It includes the January offsite final invoice, a couple of contractor invoices that got miscategorized, and a software renewal that should have gone to SaaS spend. I'm breaking it out properly but it's not clean yet. On the positive side, March is tracking much closer to plan — we're on pace to come in within 3% of budget. I'll have the full actuals to you by April 1.",
+      "is_read": true,
+      "has_replied": false,
+      "message_count": 2
+    },
+    {
+      "thread_id": "thread_stripe_receipt",
+      "subject": "Your Stripe receipt for $4,892.00",
+      "sender": "receipts@stripe.com",
+      "received_at": "2026-03-01T00:00:00-07:00",
+      "importance_level": "low",
+      "importance_score": 0.08,
+      "importance_reasons": [
+        "Automated Stripe receipt",
+        "Anthropic API usage — routine operating expense"
+      ],
+      "category": "automated",
+      "snippet": "Stripe receipt for Vela Inc — $4,892.00 for Anthropic API usage in February 2026.",
+      "body_preview": "Receipt from Stripe. Customer: Vela Inc. Amount: $4,892.00. Date: March 1, 2026. Description: Anthropic API usage — February 2026. Payment method: Visa ending 4821. This receipt is for your records. If you have questions about this charge, contact support@anthropic.com. To manage billing settings or download this receipt as a PDF, visit your Stripe dashboard.",
+      "is_read": false,
+      "has_replied": false,
+      "message_count": 1
+    },
+    {
+      "thread_id": "thread_tyler_omni",
+      "subject": "Re: Omni — we have a problem",
+      "sender": "Tyler Breen <tyler@vela.io>",
+      "received_at": "2026-03-22T16:00:00-07:00",
+      "importance_level": "high",
+      "importance_score": 0.87,
+      "importance_reasons": [
+        "Omni Logistics at serious churn risk before April 1 renewal",
+        "Usage data shows Forecast Engine abandoned entirely since Feb 12",
+        "Tyler recommends Jordan-direct outreach, discount, and roadmap commitment"
+      ],
+      "category": "internal",
+      "snippet": "Tyler Breen flagging that Omni Logistics is considering not renewing — usage has dropped 40% since the February integration issue and product analytics show Forecast Engine was abandoned around Feb 12.",
+      "body_preview": "Jordan — just got off a difficult call with Derek Kane at Omni. He told me directly they're considering not renewing on April 1. I want to give you the full picture before you hear it another way. Usage is down 40% since the February integration issue. I pulled product analytics this morning and it's actually worse than that — they stopped using Forecast Engine entirely around February 12th. That's the day the mobile sync bug hit. They haven't come back. Derek was polite but clear. He needs three things to renew: (1) a sincere apology from you, not from me — he's already heard from my team twice, (2) a roadmap commitment on the mobile sync fix with a real date, and (3) a discount, probably 15-20% to reflect the value gap this year. I've drafted talking points for the April 1 call if you want them. I'd strongly recommend you make the first move and reach out to Derek directly before the call — don't wait for him to come to us.",
+      "is_read": true,
+      "has_replied": false,
+      "message_count": 4
+    },
+    {
+      "thread_id": "thread_cfo_candidate_sandra",
+      "subject": "Re: CFO candidate — Sandra Meir",
+      "sender": "Lisa Huang <lisa@searchfirm.io>",
+      "received_at": "2026-03-24T11:00:00-07:00",
+      "importance_level": "medium",
+      "importance_score": 0.72,
+      "importance_reasons": [
+        "CFO candidate confirmed for April 3 interview",
+        "Candidate has competing offers — speed matters",
+        "Strong background for Series B stage"
+      ],
+      "category": "recruiting",
+      "snippet": "Sandra Meir confirmed for April 3 at 2pm — VP Finance at Lattice then KPMG, strong fit, but she's weighing two other offers and process speed is critical.",
+      "body_preview": "Jordan — great news, Sandra Meir confirmed for April 3 at 2pm your time. Quick background refresher: Sandra spent three years as VP Finance at Lattice, then four years at KPMG in their tech practice before that. She's done two Series B processes from the finance side and one Series C. I think she's a strong fit for where Vela is right now. One thing to be aware of: she's actively weighing two other offers. One is a public company CFO role at a smaller company — she's less excited about it but the comp is high. The other is a Series C that's similar stage to Vela. She's told me Vela is her first choice if the process moves quickly. So please don't let this go quiet after April 3. I can send you a structured scorecard template if you want to align your panel on evaluation criteria before the interview.",
+      "is_read": true,
+      "has_replied": false,
+      "message_count": 3
+    },
+    {
+      "thread_id": "thread_techcrunch",
+      "subject": "Re: Comment request — Gong acquisition of ForecastAI",
+      "sender": "Megan Lowe <megan.lowe@techcrunch.com>",
+      "received_at": "2026-03-19T13:00:00-07:00",
+      "importance_level": "medium",
+      "importance_score": 0.41,
+      "importance_reasons": [
+        "TechCrunch covering Gong/ForecastAI acquisition — major competitive event",
+        "4pm same-day deadline for comment",
+        "Opportunity to position Vela in the pipeline intelligence narrative"
+      ],
+      "category": "press",
+      "snippet": "TechCrunch reporter requesting a 1-2 sentence comment from Vela on the Gong acquisition of ForecastAI — deadline is 4pm today.",
+      "body_preview": "Hi Jordan — Megan Lowe from TechCrunch. You may have seen the news this morning: Gong announced the acquisition of ForecastAI. We're doing a quick take on what this means for the pipeline intelligence space — consolidation, what buyers should expect, that kind of thing. We'd love a 1-2 sentence comment from you as a founder in this space on what this acquisition signals and what it means for companies like Vela. Deadline for the piece is 4pm today. No need for a call — a written comment is fine. Feel free to email back or text me at the number below. Thanks in advance.",
+      "is_read": true,
+      "has_replied": false,
+      "message_count": 1
+    },
+    {
+      "thread_id": "thread_apex_stalled",
+      "subject": "Re: Re: Apex Manufacturing — next steps",
+      "sender": "Lena Vasquez <lena.vasquez@apexmfg.com>",
+      "received_at": "2026-03-10T09:45:00-07:00",
+      "importance_level": "medium",
+      "importance_score": 0.69,
+      "importance_reasons": [
+        "Deal stalled at COO approval — close date passed with no update",
+        "No follow-up from prospect since March 10",
+        "Last Vela outreach was March 18 voicemail with no response"
+      ],
+      "category": "prospect",
+      "snippet": "Lena Vasquez at Apex Manufacturing says COO sign-off is still pending and she'll follow up this week — but no follow-up has been received since March 10 and the March 31 close date has passed.",
+      "body_preview": "Hi Jordan — thanks for the follow-up. We're still waiting on COO sign-off before we can move forward. There were a few competing priorities internally last week that pushed this out. I expect to have an update by end of this week and will reach out as soon as I do. Appreciate your patience. [NOTE: This response was sent March 10. No follow-up received since. Deal close date was March 31 — passed with no update. Last Vela activity: called March 18, left voicemail.]",
+      "is_read": true,
+      "has_replied": true,
+      "message_count": 5
+    },
+    {
+      "thread_id": "thread_nina_incident",
+      "subject": "Re: Re: Production incident — Mar 14 (resolved)",
+      "sender": "Nina Cho <nina@vela.io>",
+      "received_at": "2026-03-14T23:55:00-07:00",
+      "importance_level": "medium",
+      "importance_score": 0.63,
+      "importance_reasons": [
+        "Production incident affected 4 customers including Crestline and Omni",
+        "Root cause: forecast model deploy introduced regression in Salesforce sync path",
+        "Postmortem communications to customers going out next day"
+      ],
+      "category": "internal",
+      "snippet": "Nina Cho confirming production incident resolved — rollback completed at 11:50pm, root cause was a forecast model deploy regression in the Salesforce sync path, Crestline and Omni among 4 affected customers for ~2 hours.",
+      "body_preview": "Jordan — incident is resolved. Rollback completed at 11:50pm. Here's the summary: root cause was the forecast model deploy at 9pm tonight. It introduced a regression in the Salesforce sync path that caused write failures for contact records updated from mobile. We caught it at 10:45pm via alerting. Affected customers: Crestline Health, Omni Logistics, and two others — approximately 2 hours of impact. Tyler's team has been notified and will handle direct customer communication. We'll send postmortem communications to affected customers tomorrow morning. I'll have a full internal postmortem written up by Monday. We're adding a pre-deploy integration smoke test to prevent this class of issue going forward. Let me know if you need anything else tonight.",
+      "is_read": true,
+      "has_replied": false,
+      "message_count": 6
+    },
+    {
+      "thread_id": "thread_conference_invite",
+      "subject": "SaaStr Annual 2026 — Speaker invitation",
+      "sender": "speakers@saastr.com",
+      "received_at": "2026-03-05T10:00:00-07:00",
+      "importance_level": "low",
+      "importance_score": 0.35,
+      "importance_reasons": [
+        "Speaking opportunity at SaaStr Annual 2026",
+        "Respond by April 15 — low urgency for now"
+      ],
+      "category": "external",
+      "snippet": "SaaStr Annual 2026 speaker invitation — 20-minute slot on AI-driven sales forecasting, approximately 3,000 attendees, respond by April 15.",
+      "body_preview": "Dear Jordan — on behalf of the SaaStr Annual 2026 team, we'd like to invite you to speak at this year's event. We're putting together a track on AI-driven revenue operations and believe Vela's work on sales forecasting would be a great fit for our audience. The session would be a 20-minute talk with 5 minutes of Q&A, expected audience of approximately 3,000 attendees based on prior years. The event is scheduled for September 2026 in San Francisco. We ask that you respond by April 15 so we can finalize the agenda. If you're interested, we'll follow up with logistics, speaker prep resources, and topic confirmation. We hope you'll join us.",
+      "is_read": false,
+      "has_replied": false,
+      "message_count": 1
+    }
+  ]
+}
