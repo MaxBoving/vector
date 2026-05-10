@@ -84,6 +84,8 @@ def init_db():
             connection.exec_driver_sql("ALTER TABLE conversationlivecontext ADD COLUMN unified_memory JSON")
         if live_context_columns and "pending_actions" not in live_context_columns:
             connection.exec_driver_sql("ALTER TABLE conversationlivecontext ADD COLUMN pending_actions JSON")
+        if live_context_columns and "resolved_clarifications" not in live_context_columns:
+            connection.exec_driver_sql("ALTER TABLE conversationlivecontext ADD COLUMN resolved_clarifications JSON")
 
 def get_ceo_preferences(ceo_id: str) -> Optional[CEOPreferences]:
     with Session(engine) as session:
