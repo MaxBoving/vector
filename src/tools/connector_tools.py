@@ -6,9 +6,14 @@ a ToolResult following the standard invoke(context, **kwargs) → ToolResult con
 
 from __future__ import annotations
 
+import logging
 from typing import Any
 
 from src.core.database import get_connected_account
+
+from src.tools.demo_config import DEV_DEMO_MODE, demo_lookup_id, load_fixture
+
+logger = logging.getLogger(__name__)
 from src.integrations.providers import (
     ProviderIntegrationError,
     _fetch_gmail_threads,
@@ -48,6 +53,22 @@ CONNECTOR_MANIFEST: dict[str, dict] = {
 }
 
 
+def _get_demo_email_threads(ceo_id: str) -> list[dict[str, Any]] | None:
+    if not DEV_DEMO_MODE:
+        return None
+    data = load_fixture("gmail_threads")
+    threads = data.get("ranked_threads")
+    return threads if threads is not None else None
+
+
+def _get_demo_calendar_events(ceo_id: str) -> list[dict[str, Any]] | None:
+    if not DEV_DEMO_MODE:
+        return None
+    data = load_fixture("gcal_events")
+    events = data.get("upcoming_events")
+    return events if events is not None else None
+
+
 class ReadEmailThreadsTool(BaseTool):
     metadata = ToolMetadata(
         name="read_email_threads",
@@ -60,6 +81,16 @@ class ReadEmailThreadsTool(BaseTool):
     def invoke(self, context: ToolContext, **kwargs: Any) -> ToolResult:
         limit: int = int(kwargs.get("limit") or 10)
         ceo_id = context.ceo_id or ""
+
+        demo_threads = _get_demo_email_threads(ceo_id)
+        if demo_threads is not None:
+            threads = demo_threads[:limit]
+            logger.info("email: demo mode enabled — returning %d seeded threads for %s", len(threads), ceo_id)
+            return ToolResult(
+                tool_name=self.metadata.name,
+                success=True,
+                data={"threads": threads, "service": "demo_gmail", "count": len(threads)},
+            )
 
         try:
             google_account = _get_valid_account(ceo_id, "google", "gmail")
@@ -82,17 +113,7 @@ class ReadEmailThreadsTool(BaseTool):
         except ProviderIntegrationError as exc:
             return ToolResult(tool_name=self.metadata.name, success=False, error=str(exc))
 
-        # Demo fallback — seeded data in ConnectedAccount[demo, gmail]
-        demo_account = get_connected_account(ceo_id, "demo", "gmail")
-        if demo_account and isinstance(demo_account.provider_metadata, dict):
-            payload = demo_account.provider_metadata.get("event_payload") or {}
-            threads = payload.get("ranked_threads") or []
-            return ToolResult(
-                tool_name=self.metadata.name,
-                success=True,
-                data={"threads": threads, "service": "demo_gmail", "count": len(threads)},
-            )
-
+        logger.info("email: no account found for ceo_id=%s", ceo_id)
         return ToolResult(
             tool_name=self.metadata.name,
             success=False,
@@ -112,6 +133,16 @@ class ReadCalendarEventsTool(BaseTool):
     def invoke(self, context: ToolContext, **kwargs: Any) -> ToolResult:
         max_results: int = int(kwargs.get("max_results") or 20)
         ceo_id = context.ceo_id or ""
+
+        demo_events = _get_demo_calendar_events(ceo_id)
+        if demo_events is not None:
+            events = demo_events[:max_results]
+            logger.info("calendar: demo mode enabled — returning %d seeded events for %s", len(events), ceo_id)
+            return ToolResult(
+                tool_name=self.metadata.name,
+                success=True,
+                data={"events": events, "service": "demo_calendar", "count": len(events)},
+            )
 
         try:
             google_account = _get_valid_account(ceo_id, "google", "google_calendar")
@@ -134,17 +165,7 @@ class ReadCalendarEventsTool(BaseTool):
         except ProviderIntegrationError as exc:
             return ToolResult(tool_name=self.metadata.name, success=False, error=str(exc))
 
-        # Demo fallback — seeded data in ConnectedAccount[demo, google_calendar]
-        demo_account = get_connected_account(ceo_id, "demo", "google_calendar")
-        if demo_account and isinstance(demo_account.provider_metadata, dict):
-            payload = demo_account.provider_metadata.get("event_payload") or {}
-            events = payload.get("upcoming_events") or []
-            return ToolResult(
-                tool_name=self.metadata.name,
-                success=True,
-                data={"events": events, "service": "demo_calendar", "count": len(events)},
-            )
-
+        logger.info("calendar: no account found for ceo_id=%s", ceo_id)
         return ToolResult(
             tool_name=self.metadata.name,
             success=False,
