@@ -1,0 +1,196 @@
+{
+  "channels": [
+    {
+      "id": "C_exec_team",
+      "name": "executive-team",
+      "messages": [
+        {
+          "ts": "1743033600",
+          "user": "rachel@vela.io",
+          "text": "Q1 final: 103% of plan. Deck ready for review in Drive. Two reps below 70% — need to talk about Tyler Ng before all-hands.",
+          "reactions": [
+            {"name": "white_check_mark", "count": 4},
+            {"name": "muscle", "count": 2}
+          ]
+        },
+        {
+          "ts": "1742947200",
+          "user": "sam@vela.io",
+          "text": "FYI the roadmap doc in Drive is 5 months stale. Notion is source of truth. I'll sync it to Drive this week but don't use the Drive version for board prep.",
+          "reactions": [
+            {"name": "eyes", "count": 1}
+          ]
+        },
+        {
+          "ts": "1742860800",
+          "user": "jordan@vela.io",
+          "text": "Gong just acquired ForecastAI. $180M. Let's discuss what this means for our positioning — especially for ClearPath where Gong is in the eval.",
+          "reactions": [
+            {"name": "thinking_face", "count": 3}
+          ],
+          "_noise_note": "Thread ends here — 'let's discuss' never happened, no follow-up"
+        },
+        {
+          "ts": "1742774400",
+          "user": "farrukh@vela.io",
+          "text": "Quick heads up: the financial model has eng headcount as 19. Sam confirmed it should be 21. I'll fix before the board packet goes out.",
+          "reactions": [
+            {"name": "thumbsup", "count": 2}
+          ]
+        },
+        {
+          "ts": "1742688000",
+          "user": "nina@vela.io",
+          "text": "ICP v2 rollout is on track for Apr 15. All backend services updated.",
+          "reactions": [],
+          "_noise_note": "'ICP v2' is an internal product term never explained in this channel"
+        }
+      ]
+    },
+    {
+      "id": "C_pipeline",
+      "name": "pipeline",
+      "messages": [
+        {
+          "ts": "1743120000",
+          "user": "derek.c@vela.io",
+          "text": "Ironstone update: David Park confirmed legal has one more redline (data residency, section 8.3). If Jordan can get Sam to confirm EU hosting we're at signature. 👍",
+          "reactions": [
+            {"name": "fire", "count": 3}
+          ],
+          "_noise_note": "Thread ends with emoji — no actual decision or owner captured"
+        },
+        {
+          "ts": "1742947200",
+          "user": "priya.m@vela.io",
+          "text": "Drexel Partners — proposal sent Mar 14, no response in 12 days. Should I call or give it another week?",
+          "reactions": [
+            {"name": "phone", "count": 1}
+          ],
+          "_noise_note": "No reply in thread — question went unanswered"
+        },
+        {
+          "ts": "1742860800",
+          "user": "lena.v@vela.io",
+          "text": "Apex Manufacturing — close date was Mar 31. Lena Vasquez went dark after Mar 10. I'm going to push the close date to Apr 30 in Salesforce.",
+          "reactions": [
+            {"name": "white_check_mark", "count": 1}
+          ]
+        },
+        {
+          "ts": "1742601600",
+          "user": "rachel@vela.io",
+          "text": "Fortis post-mortem: lost to Gong. Champion Mia Torres left the company. New VP Sales came in with Gong relationship. Lesson: need exec sponsor above champion on deals >$75K.",
+          "reactions": [
+            {"name": "100", "count": 2},
+            {"name": "cry", "count": 1}
+          ]
+        }
+      ]
+    },
+    {
+      "id": "C_customer_success",
+      "name": "customer-success",
+      "messages": [
+        {
+          "ts": "1741996800",
+          "user": "cs_bot",
+          "text": "⚠️ HEALTH ALERT: Omni Logistics — usage down 42% (30-day trailing). Forecast Engine module: 0 logins in 14 days. Action required.",
+          "reactions": [],
+          "_noise_note": "Alert posted 12 days ago — no human has replied, no owner claimed"
+        },
+        {
+          "ts": "1741997400",
+          "user": "cs_bot",
+          "text": "⚠️ HEALTH ALERT: Omni Logistics — usage down 40% (30-day trailing). Forecast Engine: inactive. [DUPLICATE — same event as above, fired from different system]",
+          "reactions": []
+        },
+        {
+          "ts": "1742860800",
+          "user": "tyler@vela.io",
+          "text": "Crestline mobile sync fix is in QA now — Nina's team targeting Mar 31 deploy. Janet Wu has been patient but I told her we'd confirm by Mar 28.",
+          "reactions": [
+            {"name": "fingers_crossed", "count": 2}
+          ]
+        },
+        {
+          "ts": "1742688000",
+          "user": "tyler@vela.io",
+          "text": "Northbridge QBR went well yesterday. Greg Holt loves the forecast accuracy improvement. Expansion opportunity: 12 seats × $8K = $96K. Need to formalize proposal.",
+          "reactions": [
+            {"name": "moneybag", "count": 3}
+          ]
+        }
+      ]
+    },
+    {
+      "id": "C_engineering",
+      "name": "engineering",
+      "messages": [
+        {
+          "ts": "1742860800",
+          "user": "nina@vela.io",
+          "text": "Salesforce mobile sync fix: PR merged, in QA. Deploying Mar 31 pending QA sign-off.",
+          "reactions": [
+            {"name": "white_check_mark", "count": 2}
+          ]
+        },
+        {
+          "ts": "1741910400",
+          "user": "deploy_bot",
+          "text": "🔴 INCIDENT: Production rollback completed at 23:50 UTC. Forecast model deploy caused Salesforce sync regression. 4 customers affected ~2 hours. Full postmortem tomorrow.",
+          "reactions": [
+            {"name": "sos", "count": 1}
+          ],
+          "_noise_note": "Postmortem link never posted as follow-up"
+        },
+        {
+          "ts": "1742256000",
+          "user": "nina@vela.io",
+          "text": "Cloud spend spike in Feb: $48K over plan. Caused by new forecast model training runs (larger dataset than estimated). March should normalize.",
+          "reactions": [
+            {"name": "ok_hand", "count": 1}
+          ]
+        }
+      ]
+    },
+    {
+      "id": "C_wins",
+      "name": "wins",
+      "messages": [
+        {
+          "ts": "1742947200",
+          "user": "derek.c@vela.io",
+          "text": "🎉 CLOSED WON: Northbridge Capital expansion — $45K ACV. Total account now $205K. Greg Holt is a huge advocate.",
+          "reactions": [
+            {"name": "tada", "count": 8},
+            {"name": "moneybag", "count": 5}
+          ]
+        },
+        {
+          "ts": "1738368000",
+          "user": "priya.m@vela.io",
+          "text": "🎉 CLOSED WON: Crestline Health — $90K ACV. Janet Wu signed on Feb 3. Q1 momentum building!",
+          "reactions": [
+            {"name": "tada", "count": 6}
+          ]
+        }
+      ]
+    },
+    {
+      "id": "C_general",
+      "name": "general",
+      "messages": [
+        {
+          "ts": "1743120000",
+          "user": "jordan@vela.io",
+          "text": "Q1 done ✅. Thank you all — 103% of plan. More at all-hands Apr 17.",
+          "reactions": [
+            {"name": "heart", "count": 12},
+            {"name": "tada", "count": 5}
+          ]
+        }
+      ]
+    }
+  ]
+}
