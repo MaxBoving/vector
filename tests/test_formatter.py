@@ -120,7 +120,7 @@ class TestFormatShape:
             "action_items": [],
             "one_liner": "Short summary.",
         }))
-        result = fmt.format(LONG_TEXT, ["read_email_threads"])
+        result, _, _ = fmt.format(LONG_TEXT, ["read_email_threads"])
         assert isinstance(result, AnswerPayload)
 
     def test_title_populated(self):
@@ -130,7 +130,7 @@ class TestFormatShape:
             "action_items": [],
             "one_liner": "Busy inbox.",
         }))
-        result = fmt.format(LONG_TEXT, ["read_email_threads"])
+        result, _, _ = fmt.format(LONG_TEXT, ["read_email_threads"])
         assert result.title == "3 emails need attention"
 
     def test_summary_uses_one_liner(self):
@@ -140,7 +140,7 @@ class TestFormatShape:
             "action_items": [],
             "one_liner": "One liner text.",
         }))
-        result = fmt.format(LONG_TEXT, ["read_email_threads"])
+        result, _, _ = fmt.format(LONG_TEXT, ["read_email_threads"])
         assert result.summary == "One liner text."
 
     def test_sections_mapped_correctly(self):
@@ -153,12 +153,23 @@ class TestFormatShape:
             "action_items": [],
             "one_liner": "S",
         }))
-        result = fmt.format(LONG_TEXT, ["read_email_threads"])
+        result, _, _ = fmt.format(LONG_TEXT, ["read_email_threads"])
         assert len(result.sections) == 2
         assert result.sections[0].label == "Urgent"
         assert result.sections[0].content == "Two emails flagged."
         assert result.sections[0].items == ["Reply to CEO", "Review contract"]
         assert result.sections[1].label == "FYI"
+
+    def test_morning_brief_fallback_keeps_title_and_summary(self):
+        fmt, _ = _make_formatter(_haiku_response({
+            "title": "",
+            "sections": [],
+            "action_items": [],
+            "one_liner": "",
+        }))
+        result, _, _ = fmt.format("Short morning brief", ["read_email_threads", "read_calendar_events"])
+        assert result.title == "Morning Brief"
+        assert result.summary
 
     def test_action_items_appended_as_section(self):
         fmt, _ = _make_formatter(_haiku_response({
@@ -167,7 +178,7 @@ class TestFormatShape:
             "action_items": ["Send the brief", "Block time for prep"],
             "one_liner": "S",
         }))
-        result = fmt.format(LONG_TEXT, ["read_calendar_events"])
+        result, _, _ = fmt.format(LONG_TEXT, ["read_calendar_events"])
         labels = [s.label for s in result.sections]
         assert "Action Items" in labels
         action_section = next(s for s in result.sections if s.label == "Action Items")
@@ -181,7 +192,7 @@ class TestFormatShape:
             "action_items": [],
             "one_liner": "S",
         }))
-        result = fmt.format(LONG_TEXT, ["read_email_threads"])
+        result, _, _ = fmt.format(LONG_TEXT, ["read_email_threads"])
         assert isinstance(result.sections, list)
 
     def test_sections_with_missing_label_filtered(self):
@@ -195,7 +206,7 @@ class TestFormatShape:
             "action_items": [],
             "one_liner": "S",
         }))
-        result = fmt.format(LONG_TEXT, ["read_email_threads"])
+        result, _, _ = fmt.format(LONG_TEXT, ["read_email_threads"])
         assert len(result.sections) == 1
         assert result.sections[0].label == "Keep"
 
@@ -215,18 +226,18 @@ class TestSkipLogic:
     def test_short_text_skips_haiku(self):
         fmt, mock_client = _make_formatter()
         short_text = "A" * (_MIN_FORMAT_LENGTH - 1)
-        result = fmt.format(short_text, ["read_email_threads"])
+        result, _, _ = fmt.format(short_text, ["read_email_threads"])
         mock_client.messages.create.assert_not_called()
         assert result.summary == short_text
 
     def test_memory_response_skips_haiku(self):
         fmt, mock_client = _make_formatter()
-        result = fmt.format(LONG_TEXT, ["memory_management"])
+        result, _, _ = fmt.format(LONG_TEXT, ["memory_management"])
         mock_client.messages.create.assert_not_called()
 
     def test_document_created_skips_haiku(self):
         fmt, mock_client = _make_formatter()
-        result = fmt.format(LONG_TEXT, ["create_docx_memo"])
+        result, _, _ = fmt.format(LONG_TEXT, ["create_docx_memo"])
         mock_client.messages.create.assert_not_called()
 
     def test_skip_types_coverage(self):
@@ -247,12 +258,12 @@ class TestSkipLogic:
 
     def test_skip_returns_raw_text_in_summary(self):
         fmt, _ = _make_formatter()
-        result = fmt.format(LONG_TEXT, ["memory_management"])
+        result, _, _ = fmt.format(LONG_TEXT, ["memory_management"])
         assert result.summary == LONG_TEXT
 
     def test_skip_sections_is_empty_list(self):
         fmt, _ = _make_formatter()
-        result = fmt.format(LONG_TEXT, ["memory_management"])
+        result, _, _ = fmt.format(LONG_TEXT, ["memory_management"])
         assert result.sections == []
 
 
@@ -266,21 +277,21 @@ class TestFallback:
         bad_response = MagicMock()
         bad_response.content = [SimpleNamespace(text="this is not json {{{{")]
         mock_client.messages.create.return_value = bad_response
-        result = fmt.format(LONG_TEXT, ["read_email_threads"])
+        result, _, _ = fmt.format(LONG_TEXT, ["read_email_threads"])
         assert isinstance(result, AnswerPayload)
         assert result.summary == LONG_TEXT
 
     def test_haiku_exception_falls_back_to_raw(self):
         fmt, mock_client = _make_formatter()
         mock_client.messages.create.side_effect = Exception("API timeout")
-        result = fmt.format(LONG_TEXT, ["read_email_threads"])
+        result, _, _ = fmt.format(LONG_TEXT, ["read_email_threads"])
         assert isinstance(result, AnswerPayload)
         assert result.summary == LONG_TEXT
 
     def test_fallback_sections_is_empty_list(self):
         fmt, mock_client = _make_formatter()
         mock_client.messages.create.side_effect = Exception("boom")
-        result = fmt.format(LONG_TEXT, ["read_email_threads"])
+        result, _, _ = fmt.format(LONG_TEXT, ["read_email_threads"])
         assert result.sections == []
 
     def test_markdown_fenced_json_is_parsed(self):
@@ -295,7 +306,7 @@ class TestFallback:
         mock_client.messages.create.return_value = MagicMock(
             content=[SimpleNamespace(text=fenced)]
         )
-        result = fmt.format(LONG_TEXT, ["read_email_threads"])
+        result, _, _ = fmt.format(LONG_TEXT, ["read_email_threads"])
         assert result.title == "Fenced Title"
         assert result.summary == "Fenced summary."
 
@@ -305,6 +316,6 @@ class TestFallback:
             "title": "Title Only",
             # sections and action_items deliberately absent
         }))
-        result = fmt.format(LONG_TEXT, ["read_email_threads"])
+        result, _, _ = fmt.format(LONG_TEXT, ["read_email_threads"])
         assert isinstance(result, AnswerPayload)
         assert result.sections == []
