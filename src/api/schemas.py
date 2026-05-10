@@ -40,6 +40,14 @@ class AssistantQueryOptions(BaseModel):
     include_sources: bool = True
 
 
+class ClarificationFollowUpContext(BaseModel):
+    source_interaction_id: Optional[int] = None
+    source_response_type: Optional[ResponseType] = None
+    selected_option_label: Optional[str] = None
+    selected_option_value: Optional[str] = None
+    selected_option_apply_text: Optional[str] = None
+
+
 class AssistantQueryRequest(BaseModel):
     message: str
     conversation_id: str
@@ -47,6 +55,7 @@ class AssistantQueryRequest(BaseModel):
     workflow_hint: Optional[WorkflowType] = None
     attachments: List[AttachmentRef] = Field(default_factory=list)
     options: AssistantQueryOptions = Field(default_factory=AssistantQueryOptions)
+    follow_up_context: Optional[ClarificationFollowUpContext] = None
 
 
 SectionType = Literal["priority", "upcoming", "risk", "action", "detail"]
@@ -498,5 +507,4 @@ class IntegrationConnectResponse(BaseModel):
     service: str
     provider: str
     auth_url: str
-
 

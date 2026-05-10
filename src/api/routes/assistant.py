@@ -53,6 +53,7 @@ from src.assistant.approval import execute_approval, reject_approval
 from src.agents.schemas import RoutingDecision as AgentRoutingDecision, TaskIntent
 from src.api.schemas import AnswerPayload, TrustMetadata
 from src.runtime.engine import RuntimeEngine
+from src.workflows.clarification_memory import record_clarification_follow_up
 from src.workflows.routing import classify_route
 from src.workflows.request_planner import plan_request
 from src.workflows.read_model import (
@@ -145,6 +146,36 @@ async def assistant_query(
     )
 
     try:
+        record_clarification_follow_up(
+            ceo_id=current_user.ceo_id,
+            conversation_id=payload.conversation_id,
+            answer_text=payload.message,
+            source_interaction_id=(
+                payload.follow_up_context.source_interaction_id
+                if payload.follow_up_context and payload.follow_up_context.source_interaction_id is not None
+                else None
+            ),
+            source_response_type=(
+                payload.follow_up_context.source_response_type
+                if payload.follow_up_context and payload.follow_up_context.source_response_type is not None
+                else None
+            ),
+            selected_option_value=(
+                payload.follow_up_context.selected_option_value
+                if payload.follow_up_context and payload.follow_up_context.selected_option_value is not None
+                else None
+            ),
+            selected_option_label=(
+                payload.follow_up_context.selected_option_label
+                if payload.follow_up_context and payload.follow_up_context.selected_option_label is not None
+                else None
+            ),
+            selected_option_apply_text=(
+                payload.follow_up_context.selected_option_apply_text
+                if payload.follow_up_context and payload.follow_up_context.selected_option_apply_text is not None
+                else None
+            ),
+        )
         result = await generate_native_assistant_response(payload, saved_interaction, current_user)
         with Session(engine) as session:
             stored = session.get(SessionInteraction, saved_interaction.id)
@@ -473,4 +504,3 @@ async def quick_action(
     llm = LLMClient(model="gpt-4o-mini")
     result = await llm.complete_async(request.prompt, system_prompt=system)
     return QuickActionResponse(result=result.strip(), intent=request.intent)
-
