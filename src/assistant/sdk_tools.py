@@ -6,7 +6,10 @@ Write tools short-circuit the loop and are held for CEO approval.
 from __future__ import annotations
 
 import json
+import logging
 from typing import Any
+
+logger = logging.getLogger(__name__)
 
 from src.tools.base import ToolContext
 from src.tools.registry import build_default_tool_registry, ToolRegistry
@@ -226,9 +229,9 @@ _SCHEMAS: dict[str, dict[str, Any]] = {
     "execute_math": {
         "type": "object",
         "properties": {
-            "expression": {"type": "string", "description": "Math expression to evaluate"},
+            "code": {"type": "string", "description": "Python code to execute. Use print() for output. math module available."},
         },
-        "required": ["expression"],
+        "required": ["code"],
     },
     # Write tools
     "send_email_draft": {
@@ -394,4 +397,5 @@ def execute_tool(name: str, inputs: dict[str, Any], context: ToolContext) -> str
     result = registry.invoke(name, context=context, **inputs)
     if result.success:
         return json.dumps(result.data)
+    logger.warning("execute_tool[%s] failed: %s | inputs: %s", name, result.error, str(inputs)[:200])
     return json.dumps({"error": result.error})

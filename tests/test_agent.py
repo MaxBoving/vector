@@ -101,7 +101,8 @@ def test_store_and_reject_pending_action(tmp_path, monkeypatch):
 
 import asyncio
 from src.assistant.agent import AgenticAssistant
-from src.api.schemas import AssistantQueryRequest, AssistantMessageResponse
+from src.api.schemas import AnswerPayload, AssistantQueryRequest, AssistantMessageResponse, TrustMetadata
+from src.workflows.planning_types import RequestPlan
 
 
 def _make_interaction(id: int = 1, ceo_id: str = "ceo_test") -> MagicMock:
@@ -179,3 +180,88 @@ def test_agent_surfaces_write_tool_as_pending():
     call_kwargs = mock_store.call_args.kwargs
     assert call_kwargs["tool_name"] == "send_email_draft"
     assert call_kwargs["interaction_id"] == 99
+
+
+def test_agent_stamps_workflow_from_request_plan():
+    agent = AgenticAssistant()
+    user = _make_user()
+    payload = _make_payload(message="Plan my week with inbox and calendar context.")
+    interaction = _make_interaction(id=101)
+
+    request_plan = RequestPlan(
+        mode="direct_workflow",
+        target_workflow="schedule_planning",
+        direct_workflow="schedule_planning",
+    )
+
+    with patch.object(agent, "_classify_query", return_value="data_required"):
+        with patch.object(agent, "_build_system_prompt", return_value="system"):
+            with patch.object(agent, "_build_fast_system_prompt", return_value="fast"):
+                with patch.object(agent, "_load_history", return_value=[]):
+                    with patch("src.assistant.agent.plan_request", return_value=request_plan):
+                        with patch.object(agent, "_run_tool_loop", return_value=("final text", None, ["read_email_threads", "read_calendar_events"], {})):
+                            with patch.object(agent._formatter, "format", return_value=(AnswerPayload(title="", summary="", sections=[]), TrustMetadata(), "morning_brief")):
+                                result = asyncio.run(
+                                    agent.handle(payload=payload, interaction=interaction, current_user=user)
+                                )
+
+    assert result.workflow_type == "schedule_planning"
+    assert result.response_type == "schedule"
+    assert result.presentation is not None
+    assert result.presentation.mode == "schedule"
+
+
+def test_build_system_prompt_includes_document_attachment_hint():
+    agent = AgenticAssistant()
+    user = _make_user()
+    request_plan = RequestPlan(
+        mode="direct_workflow",
+        target_workflow="document_explanation",
+        direct_workflow="document_explanation",
+    )
+    prompt = agent._build_system_prompt(
+        user,
+        request_plan,
+        [{"document_id": "doc_1", "filename": "Series C Covenants.pdf"}],
+    )
+
+    assert "document_explanation" in prompt
+    assert "Series C Covenants.pdf" in prompt
+    assert "primary source material" in prompt
+
+
+def test_normalize_answer_overrides_generic_title_for_schedule():
+    agent = AgenticAssistant()
+    answer = AnswerPayload(title="Morning Brief", summary="", sections=[])
+    normalized = agent._normalize_answer(answer, workflow_type="schedule_planning", final_text="Schedule plan text")
+
+    assert normalized.title == "Morning Brief"
+    assert normalized.summary == "Schedule plan text"
+
+
+def test_apply_answer_title_contract_clears_conversational_title():
+    agent = AgenticAssistant()
+    answer = AnswerPayload(title="InnovateCorp Critical Issues & Opportunities", summary="Plain response", sections=[])
+    normalized = agent._apply_answer_title_contract(answer, workflow_type="conversational")
+
+    assert normalized.title == ""
+    assert normalized.summary == "Plain response"
+
+
+def test_build_response_clears_conversational_title():
+    agent = AgenticAssistant()
+    payload = _make_payload("What do you know about our company right now?")
+    interaction = _make_interaction()
+    answer = AnswerPayload(title="InnovateCorp Critical Issues & Opportunities", summary="Plain response", sections=[])
+    trust = TrustMetadata()
+
+    response = agent._build_response(
+        payload=payload,
+        interaction=interaction,
+        answer=answer,
+        trust=trust,
+        pending_action=None,
+        workflow_type="conversational",
+    )
+
+    assert response.answer.title == ""

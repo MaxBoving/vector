@@ -1,0 +1,345 @@
+{
+  "deals": [
+    {
+      "deal_id": "opp_ironstone_001",
+      "account_name": "Ironstone Capital",
+      "account_id": "acc_ironstone_001",
+      "stage": "Negotiation",
+      "amount": 310000,
+      "close_date": "2026-04-30",
+      "owner": "rachel@vela.io",
+      "probability": 75,
+      "contacts": [
+        {
+          "name": "David Park",
+          "title": "CRO",
+          "email": "dpark@ironstonecapital.com",
+          "role": "Champion + Economic Buyer"
+        }
+      ],
+      "activities": [
+        {
+          "type": "note",
+          "date": "2026-01-15",
+          "notes": "Amount updated $280K → $310K"
+        },
+        {
+          "type": "call",
+          "date": "2026-02-18",
+          "notes": "David walked through legal requirements for EU data residency — section 8.3 still open item. Sam needs to confirm EU hosting availability before signature."
+        },
+        {
+          "type": "email",
+          "date": "2026-03-05",
+          "notes": "Sent revised MSA with updated SLA terms. David acknowledged receipt, said legal needs 1-2 weeks."
+        },
+        {
+          "type": "call",
+          "date": "2026-03-20",
+          "notes": "Legal has one remaining redline on data residency clause. David confirmed he wants to close by end of April — internal budget timeline."
+        }
+      ],
+      "next_step": "Jordan to get Sam confirmation on EU hosting → pass to David's legal team to clear section 8.3 redline",
+      "risk_flags": ["EU data residency clause still open", "legal review may push past April 30"]
+    },
+    {
+      "deal_id": "opp_summit_001",
+      "account_name": "Summit Retail",
+      "account_id": "acc_summit_001",
+      "stage": "Negotiation",
+      "amount": 180000,
+      "close_date": "2026-04-30",
+      "owner": "rachel@vela.io",
+      "probability": 65,
+      "contacts": [
+        {
+          "name": "Chris Baxter",
+          "title": "VP Sales",
+          "email": "chris.baxter@summitretail.co",
+          "role": "Champion"
+        },
+        {
+          "name": "Michelle Tang",
+          "title": "General Counsel",
+          "email": "mtang@summitretail.com",
+          "role": "Legal"
+        }
+      ],
+      "activities": [
+        {
+          "type": "call",
+          "date": "2026-03-01",
+          "notes": "Chris verbal yes on pricing. Said he'd loop in legal this week."
+        },
+        {
+          "type": "task",
+          "date": "2026-03-07",
+          "status": "overdue",
+          "notes": "Follow up with Michelle Tang re: contract redlines"
+        },
+        {
+          "type": "task",
+          "date": "2026-03-12",
+          "status": "overdue",
+          "notes": "Send updated liability cap language (2x → 1x) per Michelle request"
+        },
+        {
+          "type": "task",
+          "date": "2026-03-19",
+          "status": "overdue",
+          "notes": "Schedule contract review call with Chris + Michelle"
+        }
+      ],
+      "next_step": "Resolve liability cap disagreement (Summit wants 2x, Vela standard is 1x) — escalate to Jordan if needed",
+      "risk_flags": ["3 overdue tasks", "email domain inconsistency (.co vs .com)"]
+    },
+    {
+      "deal_id": "opp_apex_001",
+      "account_name": "Apex Manufacturing",
+      "account_id": "acc_apex_001",
+      "stage": "Stalled",
+      "amount": 220000,
+      "close_date": "2026-03-31",
+      "owner": "lena.v@vela.io",
+      "probability": 25,
+      "contacts": [
+        {
+          "name": "Lena Vasquez",
+          "title": "VP Sales",
+          "email": "lena.vasquez@apexmfg.com",
+          "role": "Champion"
+        }
+      ],
+      "activities": [
+        {
+          "type": "call",
+          "date": "2026-02-22",
+          "notes": "called, LVM"
+        },
+        {
+          "type": "email",
+          "date": "2026-03-03",
+          "notes": "sent deck"
+        },
+        {
+          "type": "call",
+          "date": "2026-03-10",
+          "notes": "called, LVM"
+        }
+      ],
+      "next_step": "Attempt contact via LinkedIn — Lena Vasquez has not responded since Mar 10",
+      "risk_flags": ["no activity in 18 days", "COO not engaged"]
+    },
+    {
+      "deal_id": "opp_halo_001",
+      "account_name": "Halo Ventures",
+      "account_id": "acc_halo_001",
+      "stage": "Demo Scheduled",
+      "amount": 95000,
+      "close_date": "2026-05-31",
+      "owner": "derek.c@vela.io",
+      "probability": 45,
+      "contacts": [
+        {
+          "name": "Raj Patel",
+          "title": "Head of RevOps",
+          "email": "raj.patel@haloventures.com",
+          "role": "Champion"
+        }
+      ],
+      "activities": [
+        {
+          "type": "call",
+          "date": "2026-03-05",
+          "notes": "Intro call with Raj. He's evaluating 3 platforms — Vela, Clari, and a homegrown spreadsheet solution. Primary pain: forecast accuracy and rep coaching visibility."
+        },
+        {
+          "type": "email",
+          "date": "2026-03-18",
+          "notes": "Demo confirmed for Apr 2 at 10am PT. Raj wants to include their Head of Engineering."
+        }
+      ],
+      "next_step": "Run demo Apr 2 — focus on forecast accuracy module and Salesforce native integration",
+      "risk_flags": ["multi-vendor eval including Clari"]
+    },
+    {
+      "deal_id": "opp_drexel_001",
+      "account_name": "Drexel Partners",
+      "account_id": "acc_drexel_001",
+      "stage": "Proposal Sent",
+      "amount": 60000,
+      "close_date": "2026-04-15",
+      "owner": "priya.m@vela.io",
+      "probability": 40,
+      "contacts": [
+        {
+          "name": "James Whitmore",
+          "title": "VP Sales",
+          "email": "j.whitmore@drexelpartners.com",
+          "role": "Champion"
+        }
+      ],
+      "activities": [
+        {
+          "type": "call",
+          "date": "2026-03-06",
+          "notes": "Discovery call with James. 22-person sales team, using spreadsheets for forecasting. Budget approved in principle."
+        },
+        {
+          "type": "email",
+          "date": "2026-03-14",
+          "notes": "Sent proposal — 3-year deal, $60K ACV, includes onboarding package."
+        }
+      ],
+      "next_step": "Call James — proposal sent 12 days ago with no response",
+      "risk_flags": ["no response in 12 days"]
+    },
+    {
+      "deal_id": "opp_clearpath_001",
+      "account_name": "ClearPath Logistics",
+      "account_id": "acc_clearpath_001",
+      "stage": "Discovery",
+      "amount": 140000,
+      "close_date": "2026-05-15",
+      "owner": "derek.c@vela.io",
+      "probability": 35,
+      "contacts": [
+        {
+          "name": "Sandra Yoo",
+          "title": "Director of Sales Ops",
+          "email": "syoo@clearpath.io",
+          "role": "Champion"
+        }
+      ],
+      "activities": [
+        {
+          "type": "call",
+          "date": "2026-03-11",
+          "notes": "First discovery call with Sandra. She mentioned they're also evaluating Gong (post their ForecastAI acquisition). Pain points: rep accountability and pipeline visibility."
+        },
+        {
+          "type": "email",
+          "date": "2026-03-22",
+          "notes": "Sent discovery follow-up and ROI calculator. Sandra said she'd review with her VP next week."
+        }
+      ],
+      "next_step": "Second discovery call with Sandra + VP Sales — need to understand Gong eval timeline",
+      "risk_flags": ["Gong in competitive eval"]
+    },
+    {
+      "deal_id": "opp_vector_001",
+      "account_name": "Vector Health",
+      "account_id": "acc_vector_001",
+      "stage": "Qualified",
+      "amount": 75000,
+      "close_date": "2026-06-30",
+      "owner": "samira.k@vela.io",
+      "probability": 25,
+      "contacts": [
+        {
+          "name": "Tom Brennan",
+          "title": "VP Sales",
+          "email": "tbrennan@vectorhealth.com",
+          "role": "Champion"
+        }
+      ],
+      "activities": [
+        {
+          "type": "call",
+          "date": "2026-03-17",
+          "notes": "Qualified call with Tom Brennan. 35-person sales team, MEDICC qualified. Budget cycle starts Q2. No urgency yet."
+        }
+      ],
+      "next_step": "Nurture until Q2 budget opens — schedule next call for late April",
+      "risk_flags": ["long sales cycle expected", "no urgency signal yet"]
+    },
+    {
+      "deal_id": "opp_lumina_001",
+      "account_name": "Lumina Retail",
+      "account_id": "acc_lumina_001",
+      "stage": "Prospecting",
+      "amount": 55000,
+      "close_date": "2026-06-30",
+      "owner": "tyler.n@vela.io",
+      "probability": 15,
+      "contacts": [
+        {
+          "name": "Karen Mills",
+          "title": "Head of Revenue",
+          "email": "kmills@luminaretail.com",
+          "role": "Prospect"
+        }
+      ],
+      "activities": [
+        {
+          "type": "email",
+          "date": "2026-03-20",
+          "notes": "Cold outreach sent via LinkedIn + email. No response yet."
+        }
+      ],
+      "next_step": "Follow up outreach — try phone if no response by Mar 30",
+      "risk_flags": ["no response to initial outreach", "early stage — no commitment signals"]
+    }
+  ],
+  "closed_deals": [
+    {
+      "deal_id": "opp_northbridge_won",
+      "account_name": "Northbridge Capital",
+      "account_id": "acc_northbridge_001",
+      "stage": "Closed Won",
+      "amount": 160000,
+      "close_date": "2026-01-15",
+      "outcome": "Won"
+    },
+    {
+      "deal_id": "opp_crestline_won",
+      "account_name": "Crestline Health",
+      "account_id": "acc_crestline_001",
+      "stage": "Closed Won",
+      "amount": 90000,
+      "close_date": "2026-02-03",
+      "outcome": "Won"
+    },
+    {
+      "deal_id": "opp_omni_won",
+      "account_name": "Omni Logistics",
+      "account_id": "acc_omni_001",
+      "stage": "Closed Won",
+      "amount": 85000,
+      "close_date": "2025-12-12",
+      "outcome": "Won",
+      "_note": "Now at-risk renewal — see customer health signals"
+    },
+    {
+      "deal_id": "opp_fortis_lost",
+      "account_name": "Fortis Software",
+      "account_id": "acc_fortis_001",
+      "stage": "Closed Lost",
+      "amount": 110000,
+      "close_date": "2026-03-01",
+      "outcome": "Lost",
+      "loss_reason": "Churned to Gong — champion (Mia Torres) left company, new VP Sales brought in Gong from prior company"
+    }
+  ],
+  "duplicate_accounts": [
+    {
+      "id": "acc_northbridge_001",
+      "name": "Northbridge Capital"
+    },
+    {
+      "id": "acc_northbridge_047",
+      "name": "Northbridge Cap.",
+      "_note": "duplicate — same company, created by different rep"
+    }
+  ],
+  "stale_contacts": [
+    {
+      "name": "Mia Torres",
+      "title": "VP Sales",
+      "company": "Fortis Software",
+      "email": "mia.torres@fortissoftware.com",
+      "status": "Active",
+      "_note": "Left Fortis in Feb 2026 — contact still marked Active in CRM"
+    }
+  ]
+}

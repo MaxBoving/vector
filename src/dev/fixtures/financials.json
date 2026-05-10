@@ -1,0 +1,82 @@
+{
+  "current_metrics": {
+    "arr": 14200000,
+    "mrr": 1183333,
+    "nrr": 1.08,
+    "gross_margin": 0.74,
+    "burn_monthly": 890000,
+    "runway_months": 26,
+    "sales_efficiency": 0.71,
+    "headcount": 87,
+    "headcount_by_dept": {
+      "sales": 18,
+      "customer_success": 12,
+      "engineering": 21,
+      "g_and_a": 8,
+      "product": 6,
+      "marketing": 4,
+      "_note": "Financial model shows eng=19 (wrong — 2 contractors converted to FTE Jan, model not updated)"
+    }
+  },
+  "monthly_pnl": [
+    {
+      "month": "2025-10",
+      "arr_start": 11600000, "arr_end": 11800000,
+      "new_arr": 280000, "expansion_arr": 45000, "churn_arr": -110000, "contraction_arr": -15000,
+      "revenue": 983333,
+      "cogs": {"hosting": 155000, "support": 88000},
+      "opex": {"sales_marketing": 390000, "r_and_d": 285000, "g_and_a": 165000, "misc": 12000},
+      "burn": 835000, "vs_plan": -0.01
+    },
+    {
+      "month": "2025-11",
+      "arr_start": 11800000, "arr_end": 12100000,
+      "new_arr": 380000, "expansion_arr": 35000, "churn_arr": -90000, "contraction_arr": -25000,
+      "revenue": 1008333,
+      "cogs": {"hosting": 162000, "support": 91000},
+      "opex": {"sales_marketing": 405000, "r_and_d": 292000, "g_and_a": 170000, "misc": 8000},
+      "burn": 848000, "vs_plan": 0.02
+    },
+    {
+      "month": "2025-12",
+      "arr_start": 12100000, "arr_end": 12600000,
+      "new_arr": 585000, "expansion_arr": 55000, "churn_arr": -120000, "contraction_arr": -20000,
+      "revenue": 1050000,
+      "cogs": {"hosting": 168000, "support": 94000},
+      "opex": {"sales_marketing": 425000, "r_and_d": 298000, "g_and_a": 178000, "misc": 22000},
+      "burn": 863000, "vs_plan": -0.07,
+      "_note": "Q4 missed plan by 7% — Apex slip + Fortis churn risk late"
+    },
+    {
+      "month": "2026-01",
+      "arr_start": 12600000, "arr_end": 13200000,
+      "new_arr": 665000, "expansion_arr": 45000, "churn_arr": -95000,
+      "contraction_arr": -15000, "contraction_detail": "unknown_customer",
+      "revenue": 1100000,
+      "cogs": {"hosting": 172000, "support": 96000},
+      "opex": {"sales_marketing": 418000, "r_and_d": 305000, "g_and_a": 182000, "misc": 14000},
+      "burn": 867000, "vs_plan": 0.04,
+      "_note": "Northbridge Capital closed Jan 15. Contraction -$15K has no customer name."
+    },
+    {
+      "month": "2026-02",
+      "arr_start": 13200000, "arr_end": 13600000,
+      "new_arr": 490000, "expansion_arr": 25000, "churn_arr": -85000, "contraction_arr": -30000,
+      "revenue": 1133333,
+      "cogs": {"hosting": 220000, "support": 98000},
+      "opex": {"sales_marketing": 422000, "r_and_d": 308000, "g_and_a": 180000, "misc": 34000},
+      "burn": 934000, "vs_plan": -0.10,
+      "_note": "Burn 10% over plan. Hosting spike $48K (ML training). Misc $34K unexplained. Crestline closed Feb 3."
+    },
+    {
+      "month": "2026-03",
+      "arr_start": 13600000, "arr_end": 14200000,
+      "new_arr": 715000, "expansion_arr": 45000, "churn_arr": -110000, "contraction_arr": -50000,
+      "revenue": 1183333,
+      "cogs": {"hosting": 185000, "support": 101000},
+      "opex": {"sales_marketing": 430000, "r_and_d": 312000, "g_and_a": 184000, "misc": 18000},
+      "burn": 890000, "vs_plan": 0.03,
+      "_note": "Fortis churn -$110K. Northbridge expansion +$45K. Hosting normalized."
+    }
+  ]
+}

@@ -1,4 +1,4 @@
-"""Assistant query, conversation, project, and demo seeding routes."""
+"""Assistant query, conversation, and project routes."""
 from __future__ import annotations
 
 from datetime import datetime
@@ -16,9 +16,6 @@ from src.api.schemas import (
     ConversationListItemResponse,
     ConversationResponse,
     ConversationUpdateRequest,
-    DemoCompanyProfileSeedResponse,
-    DemoExecutiveContextSeedRequest,
-    DemoExecutiveContextSeedResponse,
     ProjectCreateRequest,
     ProjectResponse,
     ProjectUpdateRequest,
@@ -53,16 +50,41 @@ from src.core.database import (
 from src.core.models import SessionInteraction, User
 from src.assistant.agent import AgenticAssistant
 from src.assistant.approval import execute_approval, reject_approval
+from src.agents.schemas import RoutingDecision as AgentRoutingDecision, TaskIntent
 from src.api.schemas import AnswerPayload, TrustMetadata
+from src.runtime.engine import RuntimeEngine
+from src.workflows.routing import classify_route
+from src.workflows.request_planner import plan_request
 from src.workflows.read_model import (
     build_assistant_message_response,
     build_conversation_response,
     get_default_conversation_id,
 )
-from src.workflows.demo_company_profile import seed_demo_company_profile_env as _seed_demo_company_profile_env
-from src.workflows.demo_executive_context import seed_demo_executive_context as _seed_demo_executive_context
 
 _agent = AgenticAssistant()
+_runtime = RuntimeEngine()
+
+
+def _runtime_routing_decision(workflow_type: str, request_plan, route_decision) -> AgentRoutingDecision:
+    intent_map = {
+        "document_explanation": TaskIntent.DOCUMENT_REVIEW,
+        "report_generation": TaskIntent.STRATEGIC_ANALYSIS,
+        "schedule_planning": TaskIntent.EXECUTION_REQUEST,
+        "meeting_prep": TaskIntent.EXECUTION_REQUEST,
+        "weekly_recap": TaskIntent.FACT_FINDING,
+        "calendar_briefing": TaskIntent.LIVE_RESEARCH,
+        "morning_brief": TaskIntent.LIVE_RESEARCH,
+        "email_watcher": TaskIntent.LIVE_RESEARCH,
+        "email_ingestion": TaskIntent.LIVE_RESEARCH,
+    }
+    intent = intent_map.get(workflow_type, TaskIntent.FACT_FINDING)
+    return AgentRoutingDecision(
+        intent=intent,
+        specialist_required=workflow_type,
+        relevant_state_keys=list(getattr(request_plan, "needed_context_sources", []) or []),
+        requires_approval=bool(getattr(route_decision, "requires_approval", False)),
+        rationale=str(getattr(route_decision, "rationale", "") or ""),
+    )
 
 router = APIRouter(tags=["assistant"])
 
@@ -72,6 +94,31 @@ async def generate_native_assistant_response(
     interaction: SessionInteraction,
     current_user: User,
 ) -> AssistantMessageResponse:
+    request_plan = plan_request(payload.message, has_attachments=bool(payload.attachments))
+    routing_decision = classify_route(payload, precomputed_request_plan=request_plan)
+    workflow_type = str(request_plan.target_workflow or request_plan.direct_workflow or "").strip()
+    briefing_workflows = {
+        "schedule_planning",
+        "meeting_prep",
+        "weekly_recap",
+        "morning_brief",
+        "calendar_briefing",
+        "email_ingestion",
+        "email_watcher",
+    }
+    extra_metadata: dict[str, object] = {"request_plan": request_plan.model_dump(mode="json")}
+    if workflow_type in briefing_workflows:
+        extra_metadata["skip_clarification_gate"] = True
+    if workflow_type and workflow_type != "conversational":
+        definition = _runtime._definition_for_type(workflow_type)
+        return await _runtime.run(
+            definition=definition,
+            payload=payload,
+            interaction=interaction,
+            current_user=current_user,
+            routing_decision=_runtime_routing_decision(workflow_type, request_plan, routing_decision),
+            extra_metadata=extra_metadata,
+        )
     return await _agent.handle(
         payload=payload,
         interaction=interaction,
@@ -103,7 +150,7 @@ async def assistant_query(
             stored = session.get(SessionInteraction, saved_interaction.id)
             if stored:
                 stored.status = "COMPLETED"
-                stored.response = result.answer.summary
+                stored.response = result.model_dump_json()
                 stored.last_updated = datetime.now().isoformat()
                 session.add(stored)
                 session.commit()
@@ -427,54 +474,3 @@ async def quick_action(
     result = await llm.complete_async(request.prompt, system_prompt=system)
     return QuickActionResponse(result=result.strip(), intent=request.intent)
 
-
-# ---------------------------------------------------------------------------
-# Demo seeding routes
-# ---------------------------------------------------------------------------
-
-@router.post("/demo/executive-context/seed", response_model=DemoExecutiveContextSeedResponse)
-async def seed_demo_executive_context_route(
-    payload: DemoExecutiveContextSeedRequest,
-    current_user: User = Depends(get_current_user),
-):
-    bundle = _seed_demo_executive_context(
-        ceo_id=current_user.ceo_id,
-        company_name=current_user.company_name,
-        scenario=payload.scenario,
-        anchor_date=payload.anchor_date,
-    )
-
-    return DemoExecutiveContextSeedResponse(
-        scenario=bundle["scenario"],
-        message="Demo executive inbox and calendar context seeded successfully.",
-        seeded_email_threads=len(bundle["email_event"].get("ranked_threads", [])),
-        seeded_calendar_events=len(bundle["calendar_event"].get("upcoming_events", [])),
-        seeded_signals=len(bundle["signals"]),
-        demo_account_email=bundle["demo_account_email"],
-    )
-
-
-@router.post("/demo/company-profile-env/seed", response_model=DemoCompanyProfileSeedResponse)
-async def seed_demo_company_profile_env_route(
-    payload: DemoExecutiveContextSeedRequest,
-    current_user: User = Depends(get_current_user),
-):
-    bundle = _seed_demo_company_profile_env(
-        ceo_id=current_user.ceo_id,
-        company_name=current_user.company_name,
-        scenario=payload.scenario,
-        anchor_date=payload.anchor_date,
-    )
-    record = bundle["profile_record"]
-    context_bundle = bundle["context_bundle"]
-    return DemoCompanyProfileSeedResponse(
-        scenario=bundle["scenario"],
-        message="Demo company-profile environment seeded successfully.",
-        company_name=record.company_name,
-        readiness_summary=record.readiness_summary,
-        authoritative_coverage_ratio=record.authoritative_coverage_ratio,
-        seeded_email_threads=len(context_bundle["email_event"].get("ranked_threads", [])),
-        seeded_calendar_events=len(context_bundle["calendar_event"].get("upcoming_events", [])),
-        seeded_signals=len(context_bundle["signals"]),
-        demo_account_email=context_bundle["demo_account_email"],
-    )

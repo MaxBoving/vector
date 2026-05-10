@@ -34,6 +34,25 @@ def init_db():
             connection.exec_driver_sql("ALTER TABLE ceopreferences ADD COLUMN ignored_domains JSON")
         if "learned_defaults" not in preference_columns:
             connection.exec_driver_sql("ALTER TABLE ceopreferences ADD COLUMN learned_defaults JSON")
+        if "tone" not in preference_columns:
+            connection.exec_driver_sql("ALTER TABLE ceopreferences ADD COLUMN tone VARCHAR")
+        companystate_columns = {
+            row[1]
+            for row in connection.exec_driver_sql("PRAGMA table_info(companystate)").fetchall()
+        } if connection.exec_driver_sql(
+            "SELECT name FROM sqlite_master WHERE type='table' AND name='companystate'"
+        ).fetchone() else set()
+        if companystate_columns:
+            for col, col_type in [
+                ("ceo_id", "VARCHAR"),
+                ("arr", "FLOAT"),
+                ("mrr", "FLOAT"),
+                ("headcount", "INTEGER"),
+                ("burn_monthly", "FLOAT"),
+                ("runway_months", "FLOAT"),
+            ]:
+                if col not in companystate_columns:
+                    connection.exec_driver_sql(f"ALTER TABLE companystate ADD COLUMN {col} {col_type}")
         user_columns = {
             row[1]
             for row in connection.exec_driver_sql("PRAGMA table_info(user)").fetchall()

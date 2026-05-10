@@ -1,0 +1,139 @@
+{
+  "files": [
+    {
+      "id": "drive_board_deck_q1_final",
+      "name": "Board Deck Q1 FINAL.pptx",
+      "folder": "Board",
+      "mime_type": "application/vnd.ms-powerpoint",
+      "modified_time": "2026-03-24T14:32:00Z",
+      "modified_by": "jordan@vela.io",
+      "content": "Q1 2026 Board Deck — final version for distribution. Covers ARR growth from $12.6M to $14.2M, 103% of Q1 plan. Pipeline review, headcount, and Series C positioning. NRR at 108%. Includes competitive landscape update on Gong/ForecastAI acquisition."
+    },
+    {
+      "id": "drive_board_deck_q1_final_v2",
+      "name": "Board Deck Q1 FINAL v2.pptx",
+      "folder": "Board",
+      "mime_type": "application/vnd.ms-powerpoint",
+      "modified_time": "2026-03-26T09:14:00Z",
+      "modified_by": "jordan@vela.io",
+      "content": "Board Deck Q1 FINAL v2 — NRR footnote added per Priya's comment. NRR calculation now includes footnote clarifying expansion ARR treatment. All other slides unchanged from FINAL version. Priya flagged the original NRR definition was ambiguous vs. gross retention."
+    },
+    {
+      "id": "drive_board_deck_q1_final_real",
+      "name": "Board Deck Q1 FINAL REAL.pptx",
+      "folder": "Board",
+      "mime_type": "application/vnd.ms-powerpoint",
+      "modified_time": "2026-03-27T21:47:00Z",
+      "modified_by": "jordan@vela.io",
+      "content": "THIS IS THE ONE TO SEND. Last-minute updates from Jordan: revised Series C narrative on slide 19, updated competitive positioning post-Gong/ForecastAI news. Burn multiple corrected. NOTE: This file was named poorly — version confusion with 'FINAL' and 'FINAL v2' already in folder. Jordan confirmed verbally this is the actual send version."
+    },
+    {
+      "id": "drive_board_deck_q4_2025",
+      "name": "Board Deck Q4 2025.pptx",
+      "folder": "Board",
+      "mime_type": "application/vnd.ms-powerpoint",
+      "modified_time": "2025-12-18T10:00:00Z",
+      "modified_by": "jordan@vela.io",
+      "content": "Q4 2025 Board Deck — presented December 2025. ARR $12.6M at quarter close, 93% of Q4 plan. Apex Manufacturing slip and Fortis churn risk called out as late-quarter concerns. Hiring plan for Q1 2026 approved: 14 new headcount across sales, CS, and engineering."
+    },
+    {
+      "id": "drive_financial_model_q1",
+      "name": "Q1 2026 Financial Model.xlsx",
+      "folder": "Finance",
+      "mime_type": "application/vnd.ms-excel",
+      "modified_time": "2026-03-25T16:20:00Z",
+      "modified_by": "farrukh@vela.io",
+      "content": "Q1 2026 Financial Model — full P&L with monthly actuals and forward projections. Engineering headcount: 19 [NOTE: Sam says this is wrong — should be 21. Two contractors converted to FTE in January, model not updated]. Total headcount 87. ARR $14.2M. Burn rate $890K/month March actuals. Model used for board packet prep — headcount tab needs correction before distribution."
+    },
+    {
+      "id": "drive_arr_waterfall",
+      "name": "ARR Waterfall Oct–Mar.xlsx",
+      "folder": "Finance",
+      "mime_type": "application/vnd.ms-excel",
+      "modified_time": "2026-03-27T11:05:00Z",
+      "modified_by": "farrukh@vela.io",
+      "content": "ARR Waterfall October 2025 through March 2026. Starting ARR Oct: $11.6M. Ending ARR Mar: $14.18M [NOTE: conflicts with financial model showing $14.2M — rounding treatment differs, $20K discrepancy unresolved]. Monthly breakdown of new ARR, expansion, churn, and contraction. Fortis churn ($110K) recorded in March. Northbridge expansion ($45K) also March."
+    },
+    {
+      "id": "drive_forecast_18mo",
+      "name": "18-Month Forecast (Series C).xlsx",
+      "folder": "Finance",
+      "mime_type": "application/vnd.ms-excel",
+      "modified_time": "2026-03-22T14:00:00Z",
+      "modified_by": "farrukh@vela.io",
+      "content": "18-month revenue and headcount forecast built for Series C materials. EOY 2026 ARR target: $22M. Assumes $5.8M in new ARR H2 2026 — requires Q2 pipeline acceleration. Headcount growth to 112 by Dec 2026, driven by sales team expansion (8 AEs). Three scenarios modeled: base, upside (+15%), downside (-20%). NRR held constant at 108%."
+    },
+    {
+      "id": "drive_budget_actuals",
+      "name": "Budget vs Actuals Monthly.xlsx",
+      "folder": "Finance",
+      "mime_type": "application/vnd.ms-excel",
+      "modified_time": "2026-03-26T09:30:00Z",
+      "modified_by": "farrukh@vela.io",
+      "content": "Budget vs Actuals tracking Oct 2025–Mar 2026. February shows misc OpEx line of $34K with no breakdown provided — flagged for review. Hosting spike in Feb ($48K over plan) attributed to ML model training runs. March burn $890K, 3% over plan but within acceptable range. Q1 cumulative burn $2.69M vs. $2.65M planned."
+    },
+    {
+      "id": "drive_northbridge_qbr",
+      "name": "Northbridge QBR Deck — Mar 26.pptx",
+      "folder": "Customers",
+      "mime_type": "application/vnd.ms-powerpoint",
+      "modified_time": "2026-03-25T18:45:00Z",
+      "modified_by": "tyler@vela.io",
+      "content": "Northbridge Capital QBR deck presented March 26, 2026. Covers 6 months of forecast accuracy improvements, Salesforce integration performance, and team adoption metrics. Greg Holt gave positive feedback on forecast accuracy module. Slide 14 is blank — expansion proposal placeholder (12 seats × $8K = $96K opportunity not yet formalized). Tyler needs to build out expansion proposal before next exec touch."
+    },
+    {
+      "id": "drive_crestline_escalation",
+      "name": "Crestline Escalation Notes.docx",
+      "folder": "Customers",
+      "mime_type": "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+      "modified_time": "2026-03-20T13:10:00Z",
+      "modified_by": "tyler@vela.io",
+      "content": "Internal escalation notes for Crestline Health mobile sync issue. Bug first reported by Janet Wu (VP Sales, Crestline) on February 28. Root cause: Salesforce mobile app API change introduced breaking change in Vela sync layer. Engineering confirmed fix scope March 8. PR merged March 20, currently in QA. Target deploy March 31. Janet has been patient but Tyler committed to a March 28 update. NRR risk if fix misses March."
+    },
+    {
+      "id": "drive_summit_contract",
+      "name": "Summit Retail — Contract Redlines.docx",
+      "folder": "Deals",
+      "mime_type": "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+      "modified_time": "2026-03-18T15:00:00Z",
+      "modified_by": "rachel@vela.io",
+      "content": "Summit Retail MSA redlines document. Primary open item: liability cap — Summit's legal (Michelle Tang) is requesting 2x ACV cap; Vela standard is 1x. Rachel has escalated to Jordan for approval on whether to accept 2x or hold firm. Secondary item: data deletion timeline on contract termination. Chris Baxter (VP Sales) is pushing to close before April 30 — internal budget deadline."
+    },
+    {
+      "id": "drive_ironstone_brief",
+      "name": "Ironstone Capital — Executive Brief.pptx",
+      "folder": "Deals",
+      "mime_type": "application/vnd.ms-powerpoint",
+      "modified_time": "2026-03-21T10:30:00Z",
+      "modified_by": "rachel@vela.io",
+      "content": "Executive brief prepared for Ironstone Capital deal. Covers Vela value prop for a $1.2B AUM firm with 40-person sales team. ROI model shows $340K annual savings in forecast accuracy and rep time. EU data residency remains open item — David Park's legal team flagged section 8.3 of the MSA. Deal at $310K ACV (up from original $280K). Sam needs to confirm EU hosting availability to unblock."
+    },
+    {
+      "id": "drive_q2_hiring_plan",
+      "name": "Q2 Hiring Plan.docx",
+      "folder": "Internal",
+      "mime_type": "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+      "modified_time": "2026-03-23T11:00:00Z",
+      "modified_by": "rachel@vela.io",
+      "content": "Q2 2026 Hiring Plan — CFO priority 1 per Jordan. Roles: 1 CFO (search in progress, Korn Ferry engaged), 3 AEs (West Coast expansion), 1 Senior Customer Success Manager, 1 Senior Backend Engineer. Total Q2 headcount additions: 6, bringing total to 93. CFO hire timeline targeting close by May 31. Budget impact: $180K incremental Q2 salary expense."
+    },
+    {
+      "id": "drive_cfo_scorecard",
+      "name": "CFO Job Description + Scorecard.docx",
+      "folder": "Internal",
+      "mime_type": "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+      "modified_time": "2026-03-15T08:22:00Z",
+      "modified_by": "rachel@vela.io",
+      "content": "[EMPTY — document created as placeholder, no content added]"
+    },
+    {
+      "id": "drive_eng_roadmap",
+      "name": "Eng Roadmap H1 2026.docx",
+      "folder": "Internal",
+      "mime_type": "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+      "modified_time": "2025-11-12T09:00:00Z",
+      "modified_by": "nina@vela.io",
+      "content": "Engineering Roadmap H1 2026 [LAST UPDATED NOVEMBER 2025 — STALE]\nQ1 priorities: Forecast Engine v2, Salesforce mobile sync fix (delayed), Rep coaching AI\nNOTE: Sam updated roadmap in Notion in January 2026 — this document is outdated. Notion is source of truth."
+    }
+  ]
+}

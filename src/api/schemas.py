@@ -49,16 +49,40 @@ class AssistantQueryRequest(BaseModel):
     options: AssistantQueryOptions = Field(default_factory=AssistantQueryOptions)
 
 
+SectionType = Literal["priority", "upcoming", "risk", "action", "detail"]
+
+
 class AnswerSection(BaseModel):
     label: str
     content: Optional[str] = None
     items: List[str] = Field(default_factory=list)
+    section_type: Optional[SectionType] = None
+
+
+class ChartDataPoint(BaseModel):
+    label: str
+    value: float
+
+
+class ChartSpec(BaseModel):
+    type: str = "bar"                  # bar | line | pie
+    title: str
+    data: List[ChartDataPoint]
+    value_format: str = "number"       # currency | percent | number
+    color_scheme: str = "neutral"      # pipeline | finance | neutral
+
+
+class FollowUpChip(BaseModel):
+    label: str
+    prompt: str
 
 
 class AnswerPayload(BaseModel):
     title: str
     summary: str
     sections: List[AnswerSection] = Field(default_factory=list)
+    chart: Optional[ChartSpec] = None
+    follow_ups: List[FollowUpChip] = Field(default_factory=list)
 
 
 class QuestionOption(BaseModel):
@@ -476,36 +500,3 @@ class IntegrationConnectResponse(BaseModel):
     auth_url: str
 
 
-DemoExecutiveScenario = Literal[
-    "busy_founder_day",
-    "board_prep_day",
-    "hiring_heavy_week",
-    "customer_escalation_week",
-    "finance_close_week",
-]
-
-
-class DemoExecutiveContextSeedRequest(BaseModel):
-    scenario: DemoExecutiveScenario = "busy_founder_day"
-    anchor_date: Optional[str] = None
-
-
-class DemoExecutiveContextSeedResponse(BaseModel):
-    scenario: DemoExecutiveScenario
-    message: str
-    seeded_email_threads: int
-    seeded_calendar_events: int
-    seeded_signals: int
-    demo_account_email: str
-
-
-class DemoCompanyProfileSeedResponse(BaseModel):
-    scenario: DemoExecutiveScenario
-    message: str
-    company_name: str
-    readiness_summary: Dict[str, bool] = Field(default_factory=dict)
-    authoritative_coverage_ratio: float = 0.0
-    seeded_email_threads: int
-    seeded_calendar_events: int
-    seeded_signals: int
-    demo_account_email: str
