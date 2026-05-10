@@ -1,0 +1,268 @@
+{
+  "upcoming_events": [
+    {
+      "meeting_id": "event_exec_standup_0328",
+      "title": "Exec team standup",
+      "start_time": "2026-03-28T09:00:00-07:00",
+      "end_time": "2026-03-28T09:30:00-07:00",
+      "attendees": [
+        "jordan@vela.io",
+        "rachel@vela.io",
+        "sam@vela.io",
+        "tyler@vela.io",
+        "nina@vela.io",
+        "farrukh@vela.io"
+      ],
+      "attendee_response_status": {
+        "jordan@vela.io": "accepted",
+        "rachel@vela.io": "accepted",
+        "sam@vela.io": "needsAction",
+        "tyler@vela.io": "accepted",
+        "nina@vela.io": "accepted",
+        "farrukh@vela.io": "accepted"
+      },
+      "location": "Zoom",
+      "description": "",
+      "is_organizer": true,
+      "recurring": true
+    },
+    {
+      "meeting_id": "event_board_packet_deadline",
+      "title": "Q1 Board packet — INTERNAL DEADLINE",
+      "start_time": "2026-03-28T17:00:00-07:00",
+      "end_time": "2026-03-28T17:30:00-07:00",
+      "attendees": [
+        "jordan@vela.io"
+      ],
+      "attendee_response_status": {
+        "jordan@vela.io": "accepted"
+      },
+      "location": "",
+      "description": "Self-imposed deadline. Packet must be sent to board@vela.io before EOD. See Priya's email re: NRR footnote.",
+      "is_organizer": true,
+      "recurring": false
+    },
+    {
+      "meeting_id": "event_1on1_rachel_0331",
+      "title": "1:1 Rachel Odom",
+      "start_time": "2026-03-31T14:00:00-07:00",
+      "end_time": "2026-03-31T14:30:00-07:00",
+      "attendees": [
+        "jordan@vela.io",
+        "rachel@vela.io"
+      ],
+      "attendee_response_status": {
+        "jordan@vela.io": "accepted",
+        "rachel@vela.io": "accepted"
+      },
+      "location": "Zoom",
+      "description": "",
+      "is_organizer": true,
+      "recurring": true
+    },
+    {
+      "meeting_id": "event_omni_renewal_0401",
+      "title": "Omni Logistics — renewal call",
+      "start_time": "2026-04-01T10:00:00-07:00",
+      "end_time": "2026-04-01T11:00:00-07:00",
+      "attendees": [
+        "jordan@vela.io",
+        "tyler@vela.io",
+        "dkane@omnilogistics.com"
+      ],
+      "attendee_response_status": {
+        "jordan@vela.io": "accepted",
+        "tyler@vela.io": "accepted",
+        "dkane@omnilogistics.com": "accepted"
+      },
+      "location": "Zoom",
+      "description": "RENEWAL AT RISK. Usage down 40% since Feb incident. See Tyler's prep notes. Derek wants discount + roadmap commitment.",
+      "is_organizer": true,
+      "recurring": false
+    },
+    {
+      "meeting_id": "event_cfo_interview_sandra_0403",
+      "title": "CFO interview — Sandra Meir",
+      "start_time": "2026-04-03T14:00:00-07:00",
+      "end_time": "2026-04-03T15:30:00-07:00",
+      "attendees": [
+        "jordan@vela.io",
+        "sam@vela.io",
+        "rachel@vela.io"
+      ],
+      "attendee_response_status": {
+        "jordan@vela.io": "accepted",
+        "sam@vela.io": "needsAction",
+        "rachel@vela.io": "accepted"
+      },
+      "location": "Vela HQ — 340 Pine St, SF",
+      "description": "Sandra Meir — finalist. Background: VP Finance at Lattice, 4 yrs KPMG. Has competing offers — move fast. Scorecard in Drive.",
+      "is_organizer": true,
+      "recurring": false
+    },
+    {
+      "meeting_id": "event_customer_call_conflict_0403",
+      "title": "sync",
+      "start_time": "2026-04-03T14:15:00-07:00",
+      "end_time": "2026-04-03T15:00:00-07:00",
+      "attendees": [
+        "jordan@vela.io",
+        "greg.holt@northbridgecapital.com"
+      ],
+      "attendee_response_status": {
+        "jordan@vela.io": "accepted",
+        "greg.holt@northbridgecapital.com": "accepted"
+      },
+      "location": "",
+      "description": "see email",
+      "is_organizer": false,
+      "recurring": false,
+      "_conflict_note": "CONFLICT: overlaps CFO interview by 45 min. Title is 'sync' — likely Northbridge expansion discussion."
+    },
+    {
+      "meeting_id": "event_summit_legal_0407",
+      "title": "Summit Retail — legal review call",
+      "start_time": "2026-04-07T11:00:00-07:00",
+      "end_time": "2026-04-07T12:00:00-07:00",
+      "attendees": [
+        "jordan@vela.io",
+        "chris.baxter@summitretail.co",
+        "legal@vela.io"
+      ],
+      "attendee_response_status": {
+        "jordan@vela.io": "accepted",
+        "chris.baxter@summitretail.co": "tentative",
+        "legal@vela.io": "accepted"
+      },
+      "location": "Zoom",
+      "description": "MSA redlines review. Main issue: liability cap (2x vs 1x). Chris flagged GC may not be available — confirm 24h before.",
+      "is_organizer": true,
+      "recurring": false
+    },
+    {
+      "meeting_id": "event_series_c_marcus_0410",
+      "title": "Series C prep — Marcus Tell",
+      "start_time": "2026-04-10T09:00:00-07:00",
+      "end_time": "2026-04-10T10:00:00-07:00",
+      "attendees": [
+        "jordan@vela.io",
+        "mtell@angellist.io"
+      ],
+      "attendee_response_status": {
+        "jordan@vela.io": "accepted",
+        "mtell@angellist.io": "accepted"
+      },
+      "location": "Phone",
+      "description": "Prep for Series C narrative. Marcus wants to discuss NRR improvement story and Ironstone as anchor customer reference.",
+      "is_organizer": false,
+      "recurring": false
+    },
+    {
+      "meeting_id": "event_board_meeting_0415",
+      "title": "Vela Board Meeting — Q1 Review",
+      "start_time": "2026-04-15T09:00:00-07:00",
+      "end_time": "2026-04-15T17:00:00-07:00",
+      "attendees": [
+        "jordan@vela.io",
+        "dana.whitfield@emergence.vc",
+        "mtell@angellist.io",
+        "priya.anand@gmail.com",
+        "sam@vela.io",
+        "farrukh@vela.io"
+      ],
+      "attendee_response_status": {
+        "jordan@vela.io": "accepted",
+        "dana.whitfield@emergence.vc": "accepted",
+        "mtell@angellist.io": "accepted",
+        "priya.anand@gmail.com": "accepted",
+        "sam@vela.io": "accepted",
+        "farrukh@vela.io": "accepted"
+      },
+      "location": "Emergence Capital — 160 Sansome St, SF",
+      "description": "Full day board meeting. Q1 review, NRR strategy, CFO search update, Series C timeline. Marcus arriving 10 min late.",
+      "is_organizer": true,
+      "recurring": false
+    },
+    {
+      "meeting_id": "event_allhands_0417",
+      "title": "All-hands — Q1 recap + Q2 kickoff",
+      "start_time": "2026-04-17T10:00:00-07:00",
+      "end_time": "2026-04-17T11:30:00-07:00",
+      "attendees": [
+        "jordan@vela.io"
+      ],
+      "attendee_response_status": {
+        "jordan@vela.io": "accepted"
+      },
+      "location": "Zoom (company-wide)",
+      "description": "87 employees. Jordan presents Q1 results, Q2 plan, and 2 company announcements.",
+      "is_organizer": true,
+      "recurring": false
+    },
+    {
+      "meeting_id": "event_ghost_copy_1",
+      "title": "Finance review — Farrukh",
+      "start_time": "2026-03-20T09:00:00-07:00",
+      "end_time": "2026-03-20T09:30:00-07:00",
+      "attendees": [
+        "jordan@vela.io",
+        "farrukh@vela.io"
+      ],
+      "attendee_response_status": {
+        "jordan@vela.io": "declined",
+        "farrukh@vela.io": "accepted"
+      },
+      "location": "Zoom",
+      "description": "RESCHEDULED — see event on Mar 21",
+      "is_organizer": true,
+      "recurring": false
+    },
+    {
+      "meeting_id": "event_ghost_copy_2",
+      "title": "Finance review — Farrukh",
+      "start_time": "2026-03-21T09:00:00-07:00",
+      "end_time": "2026-03-21T09:30:00-07:00",
+      "attendees": [
+        "jordan@vela.io",
+        "farrukh@vela.io"
+      ],
+      "attendee_response_status": {
+        "jordan@vela.io": "declined",
+        "farrukh@vela.io": "accepted"
+      },
+      "location": "Zoom",
+      "description": "RESCHEDULED again — see Mar 28",
+      "is_organizer": true,
+      "recurring": false
+    },
+    {
+      "meeting_id": "event_standup_departed_employee",
+      "title": "Exec team standup",
+      "start_time": "2026-03-28T09:00:00-07:00",
+      "end_time": "2026-03-28T09:30:00-07:00",
+      "attendees": [
+        "jordan@vela.io",
+        "rachel@vela.io",
+        "sam@vela.io",
+        "tyler@vela.io",
+        "nina@vela.io",
+        "farrukh@vela.io",
+        "alex.morgan@vela.io"
+      ],
+      "attendee_response_status": {
+        "jordan@vela.io": "accepted",
+        "rachel@vela.io": "accepted",
+        "sam@vela.io": "needsAction",
+        "tyler@vela.io": "accepted",
+        "nina@vela.io": "accepted",
+        "farrukh@vela.io": "accepted",
+        "alex.morgan@vela.io": "needsAction"
+      },
+      "location": "Zoom",
+      "description": "",
+      "is_organizer": true,
+      "recurring": true,
+      "_noise_note": "alex.morgan@vela.io left the company in January — still on the recurring invite."
+    }
+  ]
+}

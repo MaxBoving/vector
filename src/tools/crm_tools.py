@@ -19,16 +19,15 @@ from src.integrations.crm import (
 from .base import BaseTool, ToolContext, ToolMetadata, ToolResult
 
 
+from src.tools.demo_config import DEV_DEMO_MODE, demo_lookup_id, load_fixture
+
+
 def _fetch_demo_deals(ceo_id: str) -> list[dict[str, Any]] | None:
-    """Return demo CRM deals from ConnectedAccount if seeded, else None."""
-    try:
-        from src.core.database import get_connected_account
-        account = get_connected_account(ceo_id, "demo", "crm")
-        if account and account.provider_metadata:
-            return account.provider_metadata.get("deals")
-    except Exception:
-        pass
-    return None
+    if not DEV_DEMO_MODE:
+        return None
+    data = load_fixture("crm_data")
+    deals = data.get("deals")
+    return deals if deals is not None else None
 
 
 class CRMDealContextTool(BaseTool):
