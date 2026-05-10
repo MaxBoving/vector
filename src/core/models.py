@@ -25,9 +25,10 @@ class TonePreference(str, Enum):
 class CEOPreferences(SQLModel, table=True):
     id: Optional[int] = Field(default=None, primary_key=True)
     ceo_id: str = Field(index=True, unique=True)
-    
+
     # Tone and Brevity
     preferred_tone: TonePreference = Field(default=TonePreference.CONCISE)
+    tone: Optional[str] = Field(default=None)  # plain-string alias for preferred_tone
     max_summary_length: int = Field(default=500)  # chars/words target
     
     # Risk Tolerance by Domain
@@ -232,8 +233,16 @@ class StrategicInitiative(BaseModel):
 class CompanyState(SQLModel, table=True):
     id: Optional[int] = Field(default=None, primary_key=True)
     company_name: str = Field(index=True)
+    ceo_id: Optional[str] = Field(default=None, index=True)
     last_updated: str  # ISO format
-    
+
+    # Flat financial metrics (for quick access)
+    arr: Optional[float] = Field(default=None)
+    mrr: Optional[float] = Field(default=None)
+    headcount: Optional[int] = Field(default=None)
+    burn_monthly: Optional[float] = Field(default=None)
+    runway_months: Optional[float] = Field(default=None)
+
     # Decision Primitives
     revenue_segmentation: Dict[str, float] = Field(
         default_factory=dict, 
