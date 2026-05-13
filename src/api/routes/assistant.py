@@ -1,6 +1,7 @@
 """Assistant query, conversation, and project routes."""
 from __future__ import annotations
 
+import logging
 from datetime import datetime
 
 from fastapi import APIRouter, Depends, HTTPException
@@ -30,6 +31,7 @@ class QuickActionRequest(BaseModel):
 class QuickActionResponse(BaseModel):
     result: str
     intent: str
+
 from src.core.database import (
     append_interaction_to_conversation,
     create_assistant_conversation,
@@ -43,6 +45,7 @@ from src.core.database import (
     get_unassigned_session_history,
     list_assistant_conversations,
     list_assistant_projects,
+    get_world_reference_datetime,
     save_object,
     update_assistant_conversation,
     update_assistant_project,
@@ -50,12 +53,10 @@ from src.core.database import (
 from src.core.models import SessionInteraction, User
 from src.assistant.agent import AgenticAssistant
 from src.assistant.approval import execute_approval, reject_approval
-from src.agents.schemas import RoutingDecision as AgentRoutingDecision, TaskIntent
 from src.api.schemas import AnswerPayload, TrustMetadata
 from src.runtime.engine import RuntimeEngine
+from src.workflows.assistant_dispatch import generate_native_assistant_response
 from src.workflows.clarification_memory import record_clarification_follow_up
-from src.workflows.routing import classify_route
-from src.workflows.request_planner import plan_request
 from src.workflows.read_model import (
     build_assistant_message_response,
     build_conversation_response,
@@ -64,67 +65,9 @@ from src.workflows.read_model import (
 
 _agent = AgenticAssistant()
 _runtime = RuntimeEngine()
-
-
-def _runtime_routing_decision(workflow_type: str, request_plan, route_decision) -> AgentRoutingDecision:
-    intent_map = {
-        "document_explanation": TaskIntent.DOCUMENT_REVIEW,
-        "report_generation": TaskIntent.STRATEGIC_ANALYSIS,
-        "schedule_planning": TaskIntent.EXECUTION_REQUEST,
-        "meeting_prep": TaskIntent.EXECUTION_REQUEST,
-        "weekly_recap": TaskIntent.FACT_FINDING,
-        "calendar_briefing": TaskIntent.LIVE_RESEARCH,
-        "morning_brief": TaskIntent.LIVE_RESEARCH,
-        "email_watcher": TaskIntent.LIVE_RESEARCH,
-        "email_ingestion": TaskIntent.LIVE_RESEARCH,
-    }
-    intent = intent_map.get(workflow_type, TaskIntent.FACT_FINDING)
-    return AgentRoutingDecision(
-        intent=intent,
-        specialist_required=workflow_type,
-        relevant_state_keys=list(getattr(request_plan, "needed_context_sources", []) or []),
-        requires_approval=bool(getattr(route_decision, "requires_approval", False)),
-        rationale=str(getattr(route_decision, "rationale", "") or ""),
-    )
+logger = logging.getLogger(__name__)
 
 router = APIRouter(tags=["assistant"])
-
-
-async def generate_native_assistant_response(
-    payload: AssistantQueryRequest,
-    interaction: SessionInteraction,
-    current_user: User,
-) -> AssistantMessageResponse:
-    request_plan = plan_request(payload.message, has_attachments=bool(payload.attachments))
-    routing_decision = classify_route(payload, precomputed_request_plan=request_plan)
-    workflow_type = str(request_plan.target_workflow or request_plan.direct_workflow or "").strip()
-    briefing_workflows = {
-        "schedule_planning",
-        "meeting_prep",
-        "weekly_recap",
-        "morning_brief",
-        "calendar_briefing",
-        "email_ingestion",
-        "email_watcher",
-    }
-    extra_metadata: dict[str, object] = {"request_plan": request_plan.model_dump(mode="json")}
-    if workflow_type in briefing_workflows:
-        extra_metadata["skip_clarification_gate"] = True
-    if workflow_type and workflow_type != "conversational":
-        definition = _runtime._definition_for_type(workflow_type)
-        return await _runtime.run(
-            definition=definition,
-            payload=payload,
-            interaction=interaction,
-            current_user=current_user,
-            routing_decision=_runtime_routing_decision(workflow_type, request_plan, routing_decision),
-            extra_metadata=extra_metadata,
-        )
-    return await _agent.handle(
-        payload=payload,
-        interaction=interaction,
-        current_user=current_user,
-    )
 
 
 @router.post("/assistant/query", response_model=AssistantMessageResponse)
@@ -143,6 +86,13 @@ async def assistant_query(
         payload.conversation_id,
         saved_interaction.id,
         query=payload.message,
+    )
+    logger.info(
+        "assistant.query received ceo_id=%s conversation_id=%s interaction_id=%s message=%r",
+        current_user.ceo_id,
+        payload.conversation_id,
+        saved_interaction.id,
+        payload.message,
     )
 
     try:
@@ -176,7 +126,13 @@ async def assistant_query(
                 else None
             ),
         )
-        result = await generate_native_assistant_response(payload, saved_interaction, current_user)
+        result = await generate_native_assistant_response(
+            payload,
+            saved_interaction,
+            current_user,
+            runtime=_runtime,
+            agent=_agent,
+        )
         with Session(engine) as session:
             stored = session.get(SessionInteraction, saved_interaction.id)
             if stored:
@@ -185,6 +141,14 @@ async def assistant_query(
                 stored.last_updated = datetime.now().isoformat()
                 session.add(stored)
                 session.commit()
+        logger.info(
+            "assistant.query stored ceo_id=%s conversation_id=%s interaction_id=%s workflow=%s response_type=%s",
+            current_user.ceo_id,
+            payload.conversation_id,
+            saved_interaction.id,
+            result.workflow_type,
+            result.response_type,
+        )
         return result
     except Exception as exc:
         with Session(engine) as session:
@@ -195,6 +159,12 @@ async def assistant_query(
                 stored_interaction.last_updated = datetime.now().isoformat()
                 session.add(stored_interaction)
                 session.commit()
+        logger.exception(
+            "assistant.query failed ceo_id=%s conversation_id=%s interaction_id=%s",
+            current_user.ceo_id,
+            payload.conversation_id,
+            saved_interaction.id,
+        )
         raise HTTPException(status_code=500, detail=f"Assistant workflow failed: {str(exc)}") from exc
 
 

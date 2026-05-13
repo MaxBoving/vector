@@ -141,7 +141,7 @@ _CHART_WORTHY_TYPES = {"pipeline_summary", "conversational", "morning_brief", "c
 
 _CHART_RULES = (
     "Return a JSON object in EXACTLY this format if a chart is appropriate:\n"
-    '{"type":"bar","title":"short title","data":[{"label":"...","value":number}],'
+    '{"type":"bar","title":"short title","subtitle":"one-line takeaway","data":[{"label":"...","value":number}],'
     '"value_format":"currency"|"percent"|"number","color_scheme":"pipeline"|"finance"|"neutral"}\n\n'
     "Return the single word null (not quoted, not in an object) if no chart is appropriate.\n\n"
     "Rules:\n"
@@ -422,6 +422,7 @@ class ResponseFormatter:
             return ChartSpec(
                 type=data.get("type", "bar"),
                 title=data.get("title", ""),
+                subtitle=data.get("subtitle"),
                 data=points,
                 value_format=data.get("value_format", "number"),
                 color_scheme=data.get("color_scheme", "neutral"),

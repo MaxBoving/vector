@@ -2,6 +2,8 @@ from typing import Any, Dict, List, Literal, Optional
 
 from pydantic import BaseModel, Field
 
+from src.workflows.semantic_followups import SemanticContext
+
 
 ResponseMode = Literal["auto", "concise", "report", "explanation"]
 WorkflowType = Literal[
@@ -26,7 +28,7 @@ ConfidenceLevel = Literal["low", "medium", "high"]
 DataQuality = Literal["low", "medium", "high"]
 SourceType = Literal["document", "state", "artifact"]
 EvidenceState = Literal["strong", "mixed", "sparse"]
-PresentationMode = Literal["brief", "report", "schedule", "decision", "draft", "finance", "artifact", "media", "calendar", "canvas", "clarification"]
+PresentationMode = Literal["brief", "report", "schedule", "decision", "draft", "finance", "artifact", "media", "calendar", "canvas", "spreadsheet", "clarification"]
 
 
 class AttachmentRef(BaseModel):
@@ -46,6 +48,7 @@ class ClarificationFollowUpContext(BaseModel):
     selected_option_label: Optional[str] = None
     selected_option_value: Optional[str] = None
     selected_option_apply_text: Optional[str] = None
+    source_context: Optional[str] = None
 
 
 class AssistantQueryRequest(BaseModel):
@@ -76,6 +79,7 @@ class ChartDataPoint(BaseModel):
 class ChartSpec(BaseModel):
     type: str = "bar"                  # bar | line | pie
     title: str
+    subtitle: Optional[str] = None
     data: List[ChartDataPoint]
     value_format: str = "number"       # currency | percent | number
     color_scheme: str = "neutral"      # pipeline | finance | neutral
@@ -121,6 +125,7 @@ class TrustMetadata(BaseModel):
     evidence_reasons: List[str] = Field(default_factory=list)
     safe_to_act: Optional[bool] = None
     question_options: List[QuestionWithOptions] = Field(default_factory=list)
+    semantic_context: Optional[SemanticContext] = None
 
 
 class SourceRef(BaseModel):
@@ -178,6 +183,7 @@ class WeeklyPlanWindow(BaseModel):
     timezone: Optional[str] = None
     workday_start: Optional[str] = None
     workday_end: Optional[str] = None
+    span_days: Optional[int] = None
 
 
 class WeeklyPlanPresentation(BaseModel):
@@ -274,6 +280,34 @@ class CanvasPresentation(BaseModel):
     theme_id: Optional[str] = None
 
 
+class SpreadsheetCell(BaseModel):
+    value: Optional[str] = None
+    kind: Optional[str] = None
+    align: Optional[str] = None
+
+
+class SpreadsheetColumn(BaseModel):
+    key: str
+    label: str
+    width: Optional[int] = None
+    align: Optional[str] = None
+
+
+class SpreadsheetRow(BaseModel):
+    label: Optional[str] = None
+    cells: List[SpreadsheetCell] = Field(default_factory=list)
+
+
+class SpreadsheetPresentation(BaseModel):
+    title: Optional[str] = None
+    subtitle: Optional[str] = None
+    columns: List[SpreadsheetColumn] = Field(default_factory=list)
+    rows: List[SpreadsheetRow] = Field(default_factory=list)
+    frozen_columns: int = 0
+    total_rows: Optional[int] = None
+    source_artifact_id: Optional[str] = None
+
+
 class MessagePresentation(BaseModel):
     mode: Optional[PresentationMode] = None
     variant: Optional[str] = None
@@ -289,6 +323,7 @@ class MessagePresentation(BaseModel):
     finance: Optional[FinancePresentation] = None
     calendar: Optional[CalendarPresentation] = None
     canvas: Optional[CanvasPresentation] = None
+    spreadsheet: Optional[SpreadsheetPresentation] = None
 
 
 class ArtifactPreviewResponse(BaseModel):
@@ -507,4 +542,3 @@ class IntegrationConnectResponse(BaseModel):
     service: str
     provider: str
     auth_url: str
-

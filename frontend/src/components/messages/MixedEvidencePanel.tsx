@@ -23,7 +23,7 @@ function buildEntries(message: AssistantMessage): QuestionEntry[] {
   const qo = message.trust.question_options
   if (qo && qo.length > 0) {
     const clarifications = qo.filter((q) => q.offer_type !== 'action_offer')
-    if (clarifications.length > 0) return clarifications.slice(0, 1)
+    if (clarifications.length > 0) return clarifications.slice(0, 2)
   }
   // Fallback: bare questions, no options — still better than nothing
   return message.trust.open_questions.slice(0, 4).map((q) => ({ question: q, options: [] }))

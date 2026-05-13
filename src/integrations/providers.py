@@ -16,6 +16,7 @@ from src.core.database import get_connected_account, get_connected_accounts, ups
 from src.core.models import ConnectedAccount, User
 from src.integrations.email_extraction import cross_reference_threads_with_calendar, extract_structured_watch_items
 from src.integrations.email_intelligence import rank_email_threads, select_primary_thread
+from src.tools.demo_config import load_fixture
 
 
 FRONTEND_APP_URL = os.getenv("APP_BASE_URL", "http://localhost:5173")
@@ -979,7 +980,33 @@ def _get_demo_event_payload(ceo_id: str, service: str) -> dict[str, Any] | None:
     if not account:
         return None
     payload = account.provider_metadata.get("event_payload") if isinstance(account.provider_metadata, dict) else None
-    return payload if isinstance(payload, dict) else None
+    base_payload = dict(payload) if isinstance(payload, dict) else {}
+    if service == "google_calendar":
+        calendar_fixture = load_fixture("gcal_events")
+        if isinstance(calendar_fixture, dict) and "upcoming_events" in calendar_fixture:
+            base_payload["upcoming_events"] = _normalize_demo_calendar_events(
+                list(calendar_fixture.get("upcoming_events", []))
+            )
+    elif service == "gmail":
+        email_fixture = load_fixture("gmail_threads")
+        if isinstance(email_fixture, dict) and "ranked_threads" in email_fixture:
+            base_payload["ranked_threads"] = list(email_fixture.get("ranked_threads", []))
+    return base_payload if base_payload else None
+
+
+def _normalize_demo_calendar_events(events: list[dict[str, Any]]) -> list[dict[str, Any]]:
+    normalized: list[dict[str, Any]] = []
+    for event in events:
+        if not isinstance(event, dict):
+            continue
+        normalized.append(
+            {
+                **event,
+                "starts_at": event.get("starts_at") or event.get("start_time"),
+                "ends_at": event.get("ends_at") or event.get("end_time"),
+            }
+        )
+    return normalized
 
 
 def _ensure_demo_account(ceo_id: str, service: str) -> Optional[ConnectedAccount]:

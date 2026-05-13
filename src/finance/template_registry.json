@@ -1,0 +1,94 @@
+{
+  "defaults": {
+    "template": "board_financial_update",
+    "section_labels": ["Key Finding", "Business Implications", "Recommended Actions"]
+  },
+  "aliases": {
+    "aws_cost_review": "cost_review",
+    "runway_burn_review": "runway_review"
+  },
+  "request_template_options": [
+    "aws_cost_review",
+    "runway_burn_review",
+    "project_spend_review",
+    "budget_variance_review",
+    "board_financial_update"
+  ],
+  "templates": {
+    "cost_review": {
+      "label": "Cost Review",
+      "expected_metric_keys": ["cloud_cost_weekly", "cloud_cost_monthly", "burn_rate_monthly", "cash_on_hand"],
+      "expected_period_granularities": ["week", "month", "quarter"],
+      "primary_chart_type": "bar",
+      "primary_chart_title": "Cost Trend",
+      "default_theme_id": "operator_modern",
+      "workbook_template_id": "finance_workbook_v1",
+      "section_labels": ["Key Cost Trends", "Business Implications", "Recommended Actions"],
+      "primary_visual": {
+        "title": "AWS Spend Trend",
+        "label": "Primary visual",
+        "description": "Weekly cloud spend versus plan"
+      }
+    },
+    "runway_review": {
+      "label": "Runway Review",
+      "expected_metric_keys": ["cash_on_hand", "burn_rate_monthly", "runway_months"],
+      "expected_period_granularities": ["month", "quarter"],
+      "primary_chart_type": "line",
+      "primary_chart_title": "Cash and Burn Trajectory",
+      "default_theme_id": "operator_modern",
+      "workbook_template_id": "finance_workbook_v1",
+      "section_labels": ["Cash Position", "Runway Implications", "Recommended Actions"],
+      "primary_visual": {
+        "title": "Cash and Burn Trend",
+        "label": "Primary visual",
+        "description": "Cash position against burn trajectory"
+      }
+    },
+    "project_spend_review": {
+      "label": "Project Spend Review",
+      "expected_metric_keys": ["approved_budget", "committed_spend", "remaining_budget", "forecast_spend", "forecast_remaining_budget"],
+      "expected_period_granularities": ["month", "quarter", "year"],
+      "primary_chart_type": "bar",
+      "primary_chart_title": "Project Spend vs Budget",
+      "default_theme_id": "executive_classic",
+      "workbook_template_id": "finance_workbook_v1",
+      "section_labels": ["Spend Status", "Business Implications", "Recommended Actions"],
+      "primary_visual": {
+        "title": "Project Spend vs Budget",
+        "label": "Primary visual",
+        "description": "Committed spend against approved budget"
+      }
+    },
+    "budget_variance_review": {
+      "label": "Budget Variance Review",
+      "expected_metric_keys": ["approved_budget", "committed_spend", "forecast_spend"],
+      "expected_period_granularities": ["month", "quarter"],
+      "primary_chart_type": "bar",
+      "primary_chart_title": "Budget vs Actual",
+      "default_theme_id": "executive_classic",
+      "workbook_template_id": "finance_workbook_v1",
+      "section_labels": ["Budget Variance", "Business Implications", "Recommended Actions"],
+      "primary_visual": {
+        "title": "Budget vs Actual",
+        "label": "Primary visual",
+        "description": "Largest over-plan and under-plan lines"
+      }
+    },
+    "board_financial_update": {
+      "label": "Board Financial Update",
+      "expected_metric_keys": ["revenue", "cash_on_hand", "burn_rate_monthly", "approved_budget"],
+      "expected_period_granularities": ["quarter", "year"],
+      "primary_chart_type": "bar",
+      "primary_chart_title": "Financial Snapshot",
+      "default_theme_id": "board_formal",
+      "workbook_template_id": "finance_workbook_v1",
+      "section_labels": ["Financial Snapshot", "Board Implications", "Recommended Actions"],
+      "primary_visual": {
+        "title": "Financial Snapshot",
+        "label": "Primary visual",
+        "description": "Quarterly financial overview"
+      }
+    }
+  }
+}

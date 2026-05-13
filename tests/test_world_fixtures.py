@@ -3,6 +3,7 @@ from __future__ import annotations
 
 import json
 import os
+from datetime import datetime
 from pathlib import Path
 
 import pytest
@@ -19,6 +20,26 @@ def test_load_fixture_helper_returns_data_for_existing():
     from src.tools.demo_config import load_fixture
     data = load_fixture("gmail_threads")
     assert "ranked_threads" in data
+
+
+def test_load_fixture_helper_shifts_calendar_dates_to_today():
+    from src.tools.demo_config import load_fixture
+
+    today = datetime.now().astimezone().date().isoformat()
+    data = load_fixture("gcal_events")
+    events = data.get("upcoming_events", [])
+    assert events, "Expected seeded calendar events in demo fixture"
+    min_start = min(str(event["start_time"]) for event in events)
+    assert min_start.startswith(today), f"Expected shifted calendar date {today}, got {min_start}"
+
+
+def test_load_fixture_helper_dedupes_calendar_events():
+    from src.tools.demo_config import load_fixture
+
+    data = load_fixture("gcal_events")
+    events = data.get("upcoming_events", [])
+    assert len(events) == 12
+    assert len({(e["meeting_id"], e["title"], e.get("start_time")) for e in events}) == len(events)
 
 
 def test_gmail_fixture_structure():

@@ -1,4 +1,4 @@
-from typing import Dict, List, Optional, Any
+from typing import Dict, List, Optional, Any, TypedDict
 from enum import Enum
 from datetime import datetime
 from pydantic import BaseModel
@@ -274,6 +274,18 @@ class CompanyState(SQLModel, table=True):
     ) # [{title: "...", content: "..."}]
 
 
+class WorldState(SQLModel, table=True):
+    id: Optional[int] = Field(default=None, primary_key=True)
+    ceo_id: str = Field(index=True, unique=True)
+    world_version: str = Field(default="world_sim_v1", index=True)
+    simulation_day: str = Field(index=True)
+    last_tick_at: str = Field(default_factory=lambda: datetime.now().isoformat())
+    snapshot_data: Dict[str, Any] = Field(default_factory=dict, sa_column=Column(JSON))
+    mutation_log: List[Dict[str, Any]] = Field(default_factory=list, sa_column=Column(JSON))
+    derived_state: Dict[str, Any] = Field(default_factory=dict, sa_column=Column(JSON))
+    updated_at: str = Field(default_factory=lambda: datetime.now().isoformat())
+
+
 class CompanyIdentityProfile(SQLModel, table=True):
     id: Optional[int] = Field(default=None, primary_key=True)
     company_name: str = Field(index=True, unique=True)
@@ -325,7 +337,30 @@ class ConversationLiveContext(SQLModel, table=True):
     intent_state: Dict[str, Any] = Field(default_factory=dict, sa_column=Column(JSON))
     unified_memory: Dict[str, Any] = Field(default_factory=dict, sa_column=Column(JSON))
     resolved_clarifications: Dict[str, str] = Field(default_factory=dict, sa_column=Column(JSON))
+    clarification_resolutions: List[Dict[str, Any]] = Field(default_factory=list, sa_column=Column(JSON))
     updated_at: str = Field(default_factory=lambda: datetime.now().isoformat())
+
+
+class ClarificationSelectedOptionRecord(TypedDict, total=False):
+    label: str
+    value: str
+    apply_text: str
+    description: str
+
+
+class ClarificationResolutionRecord(TypedDict, total=False):
+    ceo_id: str
+    conversation_id: str
+    source_interaction_id: int
+    source_response_type: str
+    gate_type: str
+    question: str
+    selected_option: ClarificationSelectedOptionRecord
+    signal_type: str
+    signal_value: str
+    answer_text: str
+    match_strategy: str
+    recorded_at: str
 
 
 class CEOSituationalProfile(SQLModel, table=True):

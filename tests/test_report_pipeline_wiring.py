@@ -44,3 +44,33 @@ def test_generate_report_payload_uses_plan_labels():
     assert payload.answer.sections[2].label == "Strategic Options"
     assert plan is not None
     assert plan.section_labels[0] == "Competitive Position"
+
+
+def test_report_agent_asks_for_presentation_style_until_learned(monkeypatch):
+    agent = ReportAgent(tools=None)  # type: ignore
+
+    monkeypatch.setattr("src.core.database.get_learned_preference", lambda *args, **kwargs: None)
+
+    gate = agent._presentation_style_gate(  # type: ignore[attr-defined]
+        ceo_id="ceo_test",
+        resolved_clarifications={},
+    )
+
+    assert gate is not None
+    question, options = gate
+    assert question == "Do you want this as a list form or a narrative recap?"
+    assert options[0]["value"] == "list_form"
+    assert options[1]["value"] == "narrative_recap"
+
+
+def test_report_agent_skips_presentation_gate_when_learned(monkeypatch):
+    agent = ReportAgent(tools=None)  # type: ignore
+
+    monkeypatch.setattr("src.core.database.get_learned_preference", lambda *args, **kwargs: "list_form")
+
+    gate = agent._presentation_style_gate(  # type: ignore[attr-defined]
+        ceo_id="ceo_test",
+        resolved_clarifications={},
+    )
+
+    assert gate is None

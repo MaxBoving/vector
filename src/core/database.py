@@ -1,9 +1,9 @@
-from datetime import datetime
+from datetime import date, datetime, time, timezone, tzinfo
 import json
 import secrets
 from sqlmodel import SQLModel, create_engine, Session, select
 from typing import Optional, Any
-from .models import AssistantConversation, AssistantProject, CEOMemory, CEOSituationalProfile, CompanyIdentityProfile, CompanyProfileRecord, CompanyState, CEOPreferences, ConnectedAccount, ConversationLiveContext, ConversationThreadEntry, SessionInteraction, AuditLog, User, ApprovedDecision, IncomingSignal
+from .models import AssistantConversation, AssistantProject, CEOMemory, CEOSituationalProfile, CompanyIdentityProfile, CompanyProfileRecord, CompanyState, CEOPreferences, ConnectedAccount, ConversationLiveContext, ConversationThreadEntry, SessionInteraction, AuditLog, User, ApprovedDecision, IncomingSignal, WorldState
 import os
 
 sqlite_url = "sqlite:///./agenticmind.db"
@@ -86,6 +86,9 @@ def init_db():
             connection.exec_driver_sql("ALTER TABLE conversationlivecontext ADD COLUMN pending_actions JSON")
         if live_context_columns and "resolved_clarifications" not in live_context_columns:
             connection.exec_driver_sql("ALTER TABLE conversationlivecontext ADD COLUMN resolved_clarifications JSON")
+        if live_context_columns and "clarification_resolutions" not in live_context_columns:
+            connection.exec_driver_sql("ALTER TABLE conversationlivecontext ADD COLUMN clarification_resolutions JSON")
+
 
 def get_ceo_preferences(ceo_id: str) -> Optional[CEOPreferences]:
     with Session(engine) as session:
@@ -200,6 +203,7 @@ def record_clarification_answer(
     conversation_id: str,
     signal_type: str,
     signal_value: str,
+    resolution: Optional[dict[str, Any]] = None,
 ) -> None:
     """
     Persist a CEO's clarification answer at two scopes:
@@ -220,6 +224,17 @@ def record_clarification_answer(
         current = dict(ctx.resolved_clarifications or {})
         current[signal_type] = signal_value
         ctx.resolved_clarifications = current
+        if resolution is not None:
+            current_resolutions = list(ctx.clarification_resolutions or [])
+            resolution_record = dict(resolution)
+            source_interaction_id = resolution_record.get("source_interaction_id")
+            if source_interaction_id is not None:
+                current_resolutions = [
+                    item for item in current_resolutions
+                    if not isinstance(item, dict) or item.get("source_interaction_id") != source_interaction_id
+                ]
+            current_resolutions.append(resolution_record)
+            ctx.clarification_resolutions = current_resolutions
         db.add(ctx)
         db.commit()
     record_preference_signal(ceo_id, signal_type=signal_type, value=signal_value)
@@ -245,6 +260,45 @@ def save_company_identity_profile(profile: CompanyIdentityProfile) -> CompanyIde
         return profile
 
 
+def get_world_state(ceo_id: str) -> Optional[WorldState]:
+    init_db()
+    with Session(engine) as session:
+        statement = select(WorldState).where(WorldState.ceo_id == ceo_id)
+        return session.exec(statement).first()
+
+
+def save_world_state(world_state: WorldState) -> WorldState:
+    init_db()
+    with Session(engine) as session:
+        statement = select(WorldState).where(WorldState.ceo_id == world_state.ceo_id)
+        existing = session.exec(statement).first()
+        if existing:
+            existing.world_version = world_state.world_version
+            existing.simulation_day = world_state.simulation_day
+            existing.last_tick_at = world_state.last_tick_at
+            existing.snapshot_data = world_state.snapshot_data
+            existing.mutation_log = world_state.mutation_log
+            existing.derived_state = world_state.derived_state
+            existing.updated_at = world_state.updated_at
+            session.add(existing)
+            session.commit()
+            session.refresh(existing)
+            return existing
+        session.add(world_state)
+        session.commit()
+        session.refresh(world_state)
+        return world_state
+
+
+def get_or_create_world_state(ceo_id: str) -> WorldState:
+    init_db()
+    existing = get_world_state(ceo_id)
+    if existing:
+        return existing
+    world_state = WorldState(ceo_id=ceo_id, simulation_day=datetime.now().astimezone().date().isoformat())
+    return save_world_state(world_state)
+
+
 def get_company_profile_record(ceo_id: str) -> Optional[CompanyProfileRecord]:
     with Session(engine) as session:
         statement = select(CompanyProfileRecord).where(CompanyProfileRecord.ceo_id == ceo_id)
@@ -257,6 +311,12 @@ def save_company_profile_record(profile: CompanyProfileRecord) -> CompanyProfile
         session.commit()
         session.refresh(profile)
         return profile
+
+
+def get_situational_profile(ceo_id: str) -> Optional[CEOSituationalProfile]:
+    with Session(engine) as session:
+        statement = select(CEOSituationalProfile).where(CEOSituationalProfile.ceo_id == ceo_id)
+        return session.exec(statement).first()
 
 
 def get_or_create_live_context(ceo_id: str, conversation_id: str) -> ConversationLiveContext:
@@ -499,15 +559,20 @@ def resolve_thread_entries(
 
 
 def get_or_create_situational_profile(ceo_id: str) -> CEOSituationalProfile:
-    with Session(engine) as session:
-        statement = select(CEOSituationalProfile).where(CEOSituationalProfile.ceo_id == ceo_id)
-        profile = session.exec(statement).first()
-        if not profile:
-            profile = CEOSituationalProfile(ceo_id=ceo_id)
-            session.add(profile)
-            session.commit()
-            session.refresh(profile)
+    profile = get_situational_profile(ceo_id)
+    if profile:
         return profile
+    with Session(engine) as session:
+        profile = CEOSituationalProfile(ceo_id=ceo_id)
+        session.add(profile)
+        session.commit()
+        session.refresh(profile)
+        return profile
+
+
+def get_world_reference_datetime(ceo_id: str, tzinfo_value: tzinfo | None = None) -> Optional[datetime]:
+    _ = ceo_id
+    return datetime.now(tzinfo_value or timezone.utc).astimezone(tzinfo_value or timezone.utc)
 
 
 def update_situational_profile(

@@ -1,4 +1,5 @@
 import json
+import logging
 import os
 import re
 from dataclasses import dataclass
@@ -26,12 +27,23 @@ from src.finance import (
 )
 from src.core.llm import DEFAULT_ANTHROPIC_MODEL, LLMClient
 from src.core.knowledge_registry import SOURCE_TRUST_RANKS
+from src.workflows.action_semantics import classify_action_semantics
 from src.workflows.request_planner import RequestPlan, plan_request
+from src.workflows.semantic_followups import (
+    SemanticContext,
+    build_semantic_context,
+    build_semantic_question_options,
+)
 from src.presentation import (
+    ChartIntentKind,
+    ChartRequest,
+    build_chart_plan,
     DeckSlideSpec,
     DeckSpec,
     MemoSectionSpec,
     MemoSpec,
+    DEFAULT_WORKBOOK_TEMPLATE_ID,
+    QuantitativeEvidenceBundle,
     PresentationBlock,
     PresentationSpec,
     get_artifact_template,
@@ -39,6 +51,7 @@ from src.presentation import (
     presentation_spec_to_deck_spec,
     presentation_spec_to_memo_spec,
 )
+from src.finance.templates import get_finance_template_definition_resolved
 from src.tools.artifact_tools import read_stage_artifact, read_stage_artifact_metadata
 from src.tools.registry import ToolRegistry
 from src.workflows.context_loading import (
@@ -83,6 +96,9 @@ from .schemas import (
 )
 
 
+logger = logging.getLogger(__name__)
+
+
 class ReportSection(BaseModel):
     label: str
     content: Optional[str] = None
@@ -107,6 +123,7 @@ class ReportTrust(BaseModel):
     evidence_reasons: List[str] = Field(default_factory=list)
     safe_to_act: Optional[bool] = None
     question_options: List[Dict[str, Any]] = Field(default_factory=list)
+    semantic_context: Optional[SemanticContext] = None
 
 
 class PresentationSection(BaseModel):
@@ -279,6 +296,7 @@ class ReportAgent(BaseAgent):
         unified_memory = payload.get("unified_memory") or context.get("unified_memory") or {}
         retrieval = payload["retrieved_documents"]
         finance_context = payload.get("finance_context") or {}
+        quantitative_evidence = payload.get("quantitative_evidence") or {}
         vocabulary_block = payload.get("vocabulary_block", "")
         finance_template = self._select_finance_template(task_input)
 
@@ -304,7 +322,35 @@ class ReportAgent(BaseAgent):
             task_input=task_input,
             intent_state=intent_state,
             unified_memory=unified_memory,
+            report_intent=intent.model_dump(mode="json"),
         )
+
+        presentation_style_gate = self._presentation_style_gate(
+            ceo_id=agent_input.workflow_state.ceo_id,
+            resolved_clarifications=resolved_clarifications,
+        )
+        if presentation_style_gate:
+            question, clarification_options = presentation_style_gate
+            clarification_output = self._build_style_clarification_output(
+                company_state=company_state,
+                question=question,
+                options=clarification_options,
+            )
+            return AgentOutput(
+                agent_name=self.metadata.name,
+                stage=agent_input.stage,
+                success=True,
+                summary="Clarifying the preferred presentation style before generating report.",
+                actions=[],
+                structured_output=clarification_output,
+                metadata={
+                    "workflow_type": "report_generation",
+                    "response_type": "clarification",
+                    "needs_clarification": True,
+                    "original_query": task_input,
+                    "clarification_options": clarification_options,
+                },
+            )
 
         # ── Clarification gate ────────────────────────────────────────────────
         # Deterministic: inspect the loaded context for actual data gaps and
@@ -524,10 +570,18 @@ class ReportAgent(BaseAgent):
             payload=payload,
             output_modality=output_modality,
             finance_template=finance_template,
+            finance_rows=finance_rows,
+            finance_summary_metrics=finance_summary_metrics,
+            quantitative_evidence=quantitative_evidence,
         )
         presentation_spec, presentation_quality = normalize_and_validate_presentation_spec(raw_presentation_spec)
+        output_modality, artifact_plan = self._upgrade_output_modality_for_charts(
+            output_modality,
+            presentation_spec,
+            artifact_plan,
+        )
         markdown = self._to_markdown(payload)
-        if self._needs_human_approval(task_input) and not self._approval_granted(agent_input):
+        if self._needs_human_approval(agent_input=agent_input) and not self._approval_granted(agent_input):
             return AgentOutput(
                 agent_name=self.metadata.name,
                 stage=agent_input.stage,
@@ -578,6 +632,7 @@ class ReportAgent(BaseAgent):
                 output_modality=output_modality,
                 stage=agent_input.stage,
                 finance_rows=finance_rows,
+                quantitative_evidence=quantitative_evidence,
                 conversation_id=agent_input.metadata.get("conversation_id"),
                 turn_count=agent_input.workflow_state.metadata.get("turn_count", 0),
                 situational_updates=self._extract_situational_updates(
@@ -930,6 +985,90 @@ class ReportAgent(BaseAgent):
             },
             "clarification_options": clarification_options,
         }
+
+    def _build_style_clarification_output(
+        self,
+        *,
+        company_state: Dict[str, Any],
+        question: str,
+        options: List[dict[str, Any]] | None = None,
+    ) -> dict:
+        company_name = (company_state or {}).get("company_name", "your company")
+        clarification_options = [dict(option) for option in (options or []) if isinstance(option, dict)][:3]
+        preamble = f"Before I continue for {company_name}, how should I frame this?\n\n— {question}"
+        option_lines = [str(option.get("label") or "").strip() for option in clarification_options if option.get("label")]
+        sections = []
+        if option_lines:
+            sections.append({"label": "Pick One", "items": option_lines})
+        return {
+            "answer": {"title": "", "summary": "", "sections": sections},
+            "trust": {
+                "confidence": "low",
+                "confidence_score": 0.0,
+                "assumptions": [],
+                "open_questions": [question],
+                "data_quality": "low",
+                "calculation_used": False,
+                "missing_context": [],
+            },
+            "sources": [],
+            "presentation": {
+                "mode": "clarification",
+                "preamble": preamble + (
+                    ("\n" + "\n".join(f"— {str(option.get('apply_text') or '').strip()}" for option in clarification_options if option.get("apply_text")))
+                    if clarification_options else ""
+                ),
+                "decision": {
+                    "decision_summary": "Choose the presentation style that best matches what you want.",
+                    "recommended_option": clarification_options[0].get("label") if clarification_options else None,
+                    "impact_if_rejected": "I may continue with a frame that does not match your preference.",
+                    "options": [
+                        {
+                            "label": option.get("label"),
+                            "description": option.get("description"),
+                        }
+                        for option in clarification_options
+                        if option.get("label")
+                    ],
+                } if clarification_options else None,
+            },
+            "clarification_options": clarification_options,
+        }
+
+    def _presentation_style_clarification_options(self) -> List[Dict[str, Any]]:
+        return [
+            {
+                "label": "List form",
+                "value": "list_form",
+                "description": "Keep it in bullets and short sections.",
+                "apply_text": "Format this as a concise list with clear bullets.",
+            },
+            {
+                "label": "Narrative recap",
+                "value": "narrative_recap",
+                "description": "Use a short prose recap with a steady flow.",
+                "apply_text": "Format this as a narrative recap with prose.",
+            },
+        ]
+
+    def _presentation_style_gate(
+        self,
+        *,
+        ceo_id: str,
+        resolved_clarifications: dict[str, str],
+    ) -> tuple[str, List[Dict[str, Any]]] | None:
+        from src.core.database import get_learned_preference
+
+        resolved_style = str(resolved_clarifications.get("presentation_style") or "").strip()
+        if resolved_style in {"list_form", "narrative_recap"}:
+            return None
+        learned_style = get_learned_preference(ceo_id, "presentation_style")
+        if learned_style in {"list_form", "narrative_recap"}:
+            return None
+        return (
+            "Do you want this as a list form or a narrative recap?",
+            self._presentation_style_clarification_options(),
+        )
 
     def _report_prompt(
         self,
@@ -2164,6 +2303,7 @@ class ReportAgent(BaseAgent):
         output_modality: str,
         stage: str,
         finance_rows: Optional[list] = None,
+        quantitative_evidence: QuantitativeEvidenceBundle | Dict[str, Any] | None = None,
         conversation_id: Optional[str] = None,
         turn_count: int = 0,
         situational_updates: Optional[Dict[str, Any]] = None,
@@ -2176,12 +2316,19 @@ class ReportAgent(BaseAgent):
             current_interaction_id=current_interaction_id,
             session_history=session_history,
             retrieval=retrieval,
+            quantitative_evidence=quantitative_evidence,
         )
         # Append variance sheet for budget variance reports when rows carry actuals + budgets
         if finance_template == "budget_variance_review" and finance_rows:
             variance_sheet = self._build_variance_sheet(finance_rows)
             if variance_sheet is not None:
                 workbook_spec.sheets.append(variance_sheet)
+
+        if presentation_spec and getattr(presentation_spec, "charts", None):
+            if output_modality == "docx":
+                output_modality = "docx+xlsx"
+            elif output_modality == "pptx":
+                output_modality = "pptx+xlsx"
 
         actions: list[Any] = [
             write_artifact_action(
@@ -2536,20 +2683,15 @@ class ReportAgent(BaseAgent):
             for marker in ("today", "tomorrow", "this week", "next week", "within", "by ", "before ", ":")
         ) or bool(re.search(r"\b(ceo|cfo|finance|engineering|product|operations|sales)\b", normalized))
 
-    def _needs_human_approval(self, task_input: str) -> bool:
-        lowered = task_input.lower()
-        # Only gate on clearly external delivery actions, not analysis/planning tasks
-        return any(
-            marker in lowered
-            for marker in [
-                "send to ",
-                "share with ",
-                "publish",
-                "circulate to",
-                "investor update",
-                "external",
-            ]
-        )
+    def _needs_human_approval(self, *, agent_input: AgentInput) -> bool:
+        workflow_state = agent_input.workflow_state
+        routing_decision = workflow_state.routing_decision or {}
+        resolved_action_reference = agent_input.context.get("resolved_action_reference") or workflow_state.metadata.get("resolved_action_reference") or {}
+        return classify_action_semantics(
+            message=agent_input.task_input or "",
+            routing_decision=routing_decision,
+            resolved_action_reference=resolved_action_reference,
+        ).external_delivery_requested
 
     def _to_memo_spec(self, *, payload: ReportPayload, finance_template: Optional[str]) -> MemoSpec:
         memo_template = get_artifact_template("board_memo_v1")
@@ -2576,6 +2718,7 @@ class ReportAgent(BaseAgent):
                 "theme_id": theme_id,
                 "presentation_version": "memo_spec_v1",
                 "finance_template": finance_template,
+                "charts": [],
             },
         )
 
@@ -2662,6 +2805,7 @@ class ReportAgent(BaseAgent):
                 "theme_id": theme_id,
                 "presentation_version": "deck_spec_v1",
                 "finance_template": finance_template,
+                "charts": [],
             },
         )
 
@@ -2773,6 +2917,7 @@ class ReportAgent(BaseAgent):
         current_interaction_id: Optional[int] = None,
         session_history: Optional[List[Dict[str, Any]]] = None,
         retrieval: List[Dict[str, Any]],
+        quantitative_evidence: QuantitativeEvidenceBundle | Dict[str, Any] | None = None,
     ) -> WorkbookSpec:
         metrics = self._extract_metrics(payload)
         finance_template = self._select_finance_template(task_input)
@@ -2786,29 +2931,60 @@ class ReportAgent(BaseAgent):
                 current_interaction_id=current_interaction_id,
                 session_history=session_history or [],
                 retrieval=retrieval,
+                quantitative_evidence=quantitative_evidence,
             )
 
         detail_rows: list[list[str]] = []
         for section in payload.answer.sections:
             for index, item in enumerate(section.items[:3], start=1):
                 detail_rows.append([section.label, f"Item {index}", item])
+        quantitative_chart_plan = self._build_quantitative_chart_plan(
+            quantitative_evidence=quantitative_evidence,
+        )
+        sheets = [
+            WorkbookSheetSpec(
+                name="Summary",
+                kind="summary",
+                metrics=metrics,
+                tables=[
+                    {
+                        "title": "Report Detail",
+                        "columns": ["Section", "Subtopic", "Detail"],
+                        "rows": detail_rows,
+                    }
+                ],
+            )
+        ]
+        if quantitative_chart_plan.requests:
+            chart_tables = self._build_chart_tables(
+                rows=[],
+                comparison_rows=[],
+                quantitative_evidence=quantitative_evidence,
+            )
+            if chart_tables:
+                sheets.append(
+                    WorkbookSheetSpec(
+                        name="Charts",
+                        kind="charts",
+                        chart_specs=self._build_chart_specs(
+                            chart_requests=quantitative_chart_plan.requests,
+                            chart_tables=chart_tables,
+                        ),
+                        tables=chart_tables,
+                        metadata={
+                            "quantitative_source_refs": self._coerce_quantitative_evidence(quantitative_evidence).source_refs,
+                        },
+                    )
+                )
 
         return WorkbookSpec(
             workbook_title=payload.answer.title,
-            sheets=[
-                WorkbookSheetSpec(
-                    name="Summary",
-                    kind="summary",
-                    metrics=metrics,
-                    tables=[
-                        {
-                            "title": "Report Detail",
-                            "columns": ["Section", "Subtopic", "Detail"],
-                            "rows": detail_rows,
-                        }
-                    ],
-                )
-            ],
+            sheets=sheets,
+            metadata={
+                "template_id": DEFAULT_WORKBOOK_TEMPLATE_ID,
+                "theme_id": DEFAULT_THEME_ID,
+                "presentation_version": "workbook_spec_v1",
+            },
         )
 
     def _extract_metrics(self, payload: ReportPayload) -> list[WorkbookMetric]:
@@ -3254,24 +3430,31 @@ class ReportAgent(BaseAgent):
         ceo_id: Optional[str] = None,
         intent: Optional["_ReportIntent"] = None,
     ) -> List[Dict[str, Any]]:
-        """Collect and order action offers and clarifying questions."""
+        """Collect and order semantic follow-ups and clarifying questions."""
         from src.core.diagnostics import DiagnosticReporter
         diag = DiagnosticReporter()
         options = []
 
-        # 1. Action offers (if no artifact is already active)
-        if not artifact_type:
-            action_offers = self._build_action_offers(task_input, payload, intent_state=intent_state, intent=intent)
-            for offer in action_offers:
-                diag.log_decision(
-                    decision_type="action_offer",
-                    item_label=offer.get("question", "unknown offer"),
-                    reason="Decision situation detected in task_input/context",
-                    context_snapshot={"artifact_type": artifact_type}
-                )
-            options.extend(action_offers)
+        semantic_context = build_semantic_context(
+            title=payload.answer.title,
+            summary=payload.answer.summary,
+            sections=[section.model_dump(mode="json") for section in payload.answer.sections],
+            sources=payload.sources,
+            confidence_score=payload.trust.confidence_score,
+            evidence_state=payload.trust.evidence_state,
+            missing_context=payload.trust.missing_context,
+            workflow_type=None,
+            response_type="report",
+            topic_hint=str(intent_state.get("task_topic") or "").strip() or None,
+            date_hint=str(intent_state.get("deadline_at") or intent_state.get("due_at") or "").strip() or None,
+            importance_hint=None,
+        )
+        payload.trust.semantic_context = semantic_context
+        semantic_questions = build_semantic_question_options(semantic_context)
+        if semantic_questions:
+            options.extend(semantic_questions)
 
-        # 2. Clarifying questions (if topic not resolved)
+        # Clarifying questions remain available when the topic is not resolved.
         if "output_format" in resolved_topics:
             clarifying_questions: list[str] = []
         else:
@@ -3288,228 +3471,9 @@ class ReportAgent(BaseAgent):
             )
             options.append({"question": q, "options": opts, "offer_type": "clarification"})
             
-        # Log summary to agent output metadata for debugging
-        payload.trust.assumptions.append(diag.get_summary())
+        # Keep diagnostic details out of user-facing assumptions; emit them to logs instead.
+        logger.debug("report_agent decision trace:\n%s", diag.get_summary())
         return options
-
-    # ── Decision detection + proactive action offers ──────────────────────────
-
-    _DECISION_SIGNALS = (
-        "decide", "decision", "approve", "sign off", "go/no-go", "go no go",
-        "should we", "should i", "do we", "what should", "recommend",
-        "risk", "renewal at risk", "deals at risk", "at risk",
-        # CEO asking "what do I need to do" or "specific actions" implies decision territory
-        "specific actions", "actions i can take", "what do i need", "needs my attention",
-        "immediate attention", "what needs",
-    )
-    _URGENCY_SIGNALS = (
-        "urgent", "asap", "today", "critical", "deadline", "overdue", "missed",
-        "by eod", "this week", "immediate",
-    )
-
-    def _detect_decision_context(self, task_input: str, payload: "ReportPayload") -> bool:  # type: ignore[name-defined]
-        """Return True when the task represents a decision situation rather than a pure info request."""
-        lowered = task_input.lower()
-        has_decision_signal = self._contains_any_marker(lowered, self._DECISION_SIGNALS)
-        has_urgency = self._contains_any_marker(lowered, self._URGENCY_SIGNALS)
-        # Also detect from the generated answer — if the agent surfaced action items, it's decision territory
-        section_labels = [s.label.lower() for s in payload.answer.sections]
-        has_action_section = any(
-            label in self._ACTION_SECTION_LABELS
-            for label in section_labels
-        )
-        return (has_decision_signal and has_urgency) or has_action_section
-
-    def _build_action_offers(
-        self,
-        task_input: str,
-        payload: "ReportPayload",  # type: ignore[name-defined]
-        *,
-        intent_state: Optional[Dict[str, Any]] = None,
-        intent: Optional["_ReportIntent"] = None,
-    ) -> List[Dict[str, Any]]:
-        """
-        Generate proactive action offers when the task represents a decision situation.
-        These appear BEFORE clarifying questions in the UI — the system offers to DO the
-        work rather than asking the CEO what to do next.
-        """
-        intent_state = intent_state or {}
-        rejected_offer_classes = {
-            str(item) for item in (intent_state.get("rejected_offer_classes") or []) if str(item)
-        }
-        must_not_do = {
-            str(item) for item in (intent_state.get("must_not_do") or []) if str(item)
-        }
-        deliverable = intent_state.get("deliverable") if isinstance(intent_state, dict) else {}
-        deliverable_kind = deliverable.get("kind") if isinstance(deliverable, dict) else None
-        task_topic = str(intent_state.get("task_topic") or "")
-        if "brief_offer" in rejected_offer_classes or "offer_more_briefs" in must_not_do:
-            return []
-        if deliverable_kind in {"execution_bundle", "email", "artifact_revision"}:
-            return []
-        lowered = task_input.lower()
-        if any(phrase in lowered for phrase in ("forget the", "not what i asked", "do not ask", "don't ask")) and "question" in lowered:
-            return []
-        if any(phrase in lowered for phrase in ("comprehensive analysis", "pull together the data", "get this to me by end of week")):
-            return []
-        # Derive a concise topic label from the title or first section
-        topic = payload.answer.title or task_input[:60]
-        answer_corpus = " ".join(
-            [
-                payload.answer.title or "",
-                payload.answer.summary or "",
-                *[section.label for section in payload.answer.sections],
-                *[item for section in payload.answer.sections for item in section.items],
-            ]
-        ).lower()
-        is_pricing_context = task_topic == "pricing_response" or any(
-            marker in lowered for marker in ("pricing", "price strategy", "competitive pricing", "margin", "discount")
-        )
-        if not is_pricing_context and any(marker in answer_corpus for marker in ("redwood", "apex", "rescue package", "call script", "apology letter")):
-            return [{
-                "question": "I can draft the Apex apology letter now, or prepare the Rachel Lim follow-up note now. Which should I build first?",
-                "offer_type": "action_offer",
-                "options": [
-                    {
-                        "label": "Apex apology letter",
-                        "value": "apex_apology_letter",
-                        "description": "Ready-to-send executive apology with service credit and prevention measures",
-                        "apply_text": (
-                            f"Draft the Apex Health executive apology letter for: {topic}. "
-                            "Include the service credit, the outage acknowledgment, and the concrete prevention measures."
-                        ),
-                    },
-                    {
-                        "label": "Rachel follow-up note",
-                        "value": "redwood_followup_note",
-                        "description": "Short executive follow-up note that reinforces the Redwood rescue commitment",
-                        "apply_text": (
-                            f"Draft the Rachel Lim follow-up note for: {topic}. "
-                            "Include the dated remediation path, the extension terms, and the next executive checkpoint."
-                        ),
-                    },
-                ],
-            }]
-        if not self._detect_decision_context(task_input, payload):
-            return []
-
-        if task_topic == "pricing_response":
-            return [{
-                "question": "Which pricing implementation package should I build first?",
-                "offer_type": "action_offer",
-                "options": [
-                    {
-                        "label": "Selective discount",
-                        "value": "pricing_discount_package",
-                        "description": "Approval flow, guardrails, scripts, and metrics for the DACH discount move",
-                        "apply_text": (
-                            f"Build the selective discount execution package for: {topic}. "
-                            "Include the approval workflow, discount guardrails, customer scripts, success metrics, and DACH-only containment rules."
-                        ),
-                    },
-                    {
-                        "label": "Value bundling",
-                        "value": "pricing_bundle_package",
-                        "description": "Customer offer language and rollout guardrails for a bundling defense",
-                        "apply_text": (
-                            f"Build the value-bundling execution package for: {topic}. "
-                            "Include the approval workflow, offer guardrails, customer scripts, success metrics, and regional containment rules."
-                        ),
-                    },
-                ],
-            }]
-
-        if (intent and intent.is_escalation) or any(
-            "risk" in s.label.lower() or "customer" in s.label.lower() or "renewal" in s.label.lower()
-            for s in payload.answer.sections
-        ):
-            if "generic_customer_deliverable_offer" in rejected_offer_classes or "generic_customer_deliverable_offer" in must_not_do:
-                return []
-            return [{
-                "question": "I can prepare the Redwood rescue package now, or the Apex executive response now. Which should I build first?",
-                "offer_type": "action_offer",
-                "options": [
-                    {
-                        "label": "Redwood script",
-                        "value": "redwood_call_script",
-                        "description": "Draft the CEO talking points and extension language for Redwood now",
-                        "apply_text": (
-                            f"Prepare the Redwood execution package for: {topic}. "
-                            "Include the CEO-to-CTO call script, the 60-day extension terms, and the follow-up note for Sarah Chen."
-                        ),
-                    },
-                    {
-                        "label": "Apex response",
-                        "value": "apex_exec_response",
-                        "description": "Draft the executive recovery response for Apex now",
-                        "apply_text": (
-                            f"Prepare the Apex executive response package for: {topic}. "
-                            "Include the executive outreach message, core talking points, and the immediate follow-up commitments."
-                        ),
-                    },
-                ],
-            }]
-
-        # Finance-heavy decision → offer a full financial decision brief
-        if (intent and intent.is_finance) or any(
-            "finance" in s.label.lower() or "financial" in s.label.lower()
-            for s in payload.answer.sections
-        ):
-            if any(marker in lowered for marker in ("pricing", "competitor", "competitive", "alphasystems", "dach")):
-                return []
-            if "generic_finance_cut_offer" in rejected_offer_classes or "generic_finance_cut_offer" in must_not_do:
-                return []
-            return [{
-                "question": "Which finance cut should I turn into an execution package?",
-                "offer_type": "action_offer",
-                "options": [
-                    {
-                        "label": "Cost cuts package",
-                        "value": "finance_execution_bundle",
-                        "description": "Owners, exact tasks, deliverable drafts, and deadlines",
-                        "apply_text": (
-                            f"Turn the finance decision into an execution package for: {topic}. "
-                            "Include the owner-ready tasks, the operator coordination message, and the immediate deadlines."
-                        ),
-                    },
-                    {
-                        "label": "Board framing",
-                        "value": "decision_brief_finance",
-                        "description": "Board-ready framing with KPIs and recommendation",
-                        "apply_text": (
-                            f"Build a full data-backed decision brief for: {topic}. "
-                            "Include: key financial KPIs, variance vs plan, burn and runway implications, recommended decision, and next steps."
-                        ),
-                    },
-                ],
-            }]
-
-        # Generic decision → offer a structured decision brief
-        return [{
-            "question": "Which way should I take this next?",
-            "offer_type": "action_offer",
-            "options": [
-                {
-                    "label": "Build decision brief",
-                    "value": "decision_brief_general",
-                    "description": "Supporting data, options, and a recommendation",
-                    "apply_text": (
-                        f"Build a structured decision brief for: {topic}. "
-                        "Include: the key question, relevant context and data, options available, "
-                        "recommended path, and what needs to happen next."
-                    ),
-                },
-                {
-                    "label": "Just the recommendation",
-                    "value": "recommendation_only",
-                    "description": "Skip the analysis — give me the call",
-                    "apply_text": (
-                        f"Give me a direct recommendation for: {topic}. "
-                        "One paragraph. What should I do and why."
-                    ),
-                },
-            ],
-        }]
 
     def _conversation_started_from_schedule(self, session_history: List[Dict[str, Any]]) -> bool:
         for item in session_history[-6:]:
@@ -3679,6 +3643,7 @@ class ReportAgent(BaseAgent):
         current_interaction_id: Optional[int],
         session_history: List[Dict[str, Any]],
         retrieval: List[Dict[str, Any]],
+        quantitative_evidence: QuantitativeEvidenceBundle | Dict[str, Any] | None = None,
     ) -> WorkbookSpec:
         lowered = task_input.lower()
         finance_template = self._select_finance_template(task_input) or get_default_finance_template()
@@ -3704,19 +3669,21 @@ class ReportAgent(BaseAgent):
             task_input=task_input,
             comparison_rows=comparison_rows,
         )
+        chart_plan = self._build_quantitative_chart_plan(
+            quantitative_evidence=quantitative_evidence,
+            finance_rows=financial_rows,
+            comparison_rows=comparison_rows,
+        )
+        chart_requests = chart_plan.requests
         model_table_rows = [self._financial_row_to_cells(row) for row in financial_rows]
         variance_rows = [row for row in financial_rows if abs(row.variance) > 0]
         forecast_rows = [row for row in financial_rows if row.forecast > 0]
         chart_tables = self._build_chart_tables(
-            task_input=task_input,
             rows=financial_rows,
             comparison_rows=comparison_rows,
+            quantitative_evidence=quantitative_evidence,
         )
-        chart_specs = self._build_chart_specs(
-            task_input=task_input,
-            comparison_rows=comparison_rows,
-            chart_tables=chart_tables,
-        )
+        chart_specs = self._build_chart_specs(chart_requests=chart_requests, chart_tables=chart_tables)
         variance_tables = [
             {
                 "title": "Budget vs Actual Variance",
@@ -5467,9 +5434,7 @@ class ReportAgent(BaseAgent):
             payload.trust.evidence_reasons = ["The report is grounded in multiple aligned internal context sources."]
             payload.trust.safe_to_act = True
 
-        # Build question_options: action offers first, then clarifying questions.
-        # Skip action offers entirely when artifact_type is already active — the CEO
-        # already accepted/requested that mode and re-offering it every turn is noise.
+        # Build question_options from the shared semantic follow-up path plus clarifying questions.
         payload.trust.question_options = self._collect_trust_options(
             task_input, payload, resolved_topics, intent_state or {}, artifact_type, ceo_id=ceo_id, intent=intent
         )
@@ -5483,6 +5448,9 @@ class ReportAgent(BaseAgent):
         payload: ReportPayload,
         output_modality: str,
         finance_template: Optional[str],
+        finance_rows: Optional[list[WorkbookFinancialRow]] = None,
+        finance_summary_metrics: Optional[list[WorkbookMetric]] = None,
+        quantitative_evidence: QuantitativeEvidenceBundle | Dict[str, Any] | None = None,
     ) -> PresentationSpec:
         artifact_kind = "board_deck" if output_modality in {"pptx", "pptx+xlsx"} else (
             "financial_analysis" if finance_template or output_modality in {"xlsx", "docx+xlsx"} else "memo"
@@ -5520,6 +5488,14 @@ class ReportAgent(BaseAgent):
             blocks[0] = blocks[0].model_copy(update={"kind": "headline"})
         if artifact_kind == "board_deck":
             decision_required = recommendation or payload.answer.summary
+        comparison_rows = self._build_period_comparison_rows(task_input=task_input, rows=finance_rows or [])
+        chart_plan = self._build_quantitative_chart_plan(
+            quantitative_evidence=quantitative_evidence,
+            finance_rows=finance_rows or [],
+            comparison_rows=comparison_rows,
+        )
+        charts = chart_plan.requests
+        chart_series = chart_plan.available_fields
         return PresentationSpec(
             artifact_kind=artifact_kind,  # type: ignore[arg-type]
             audience=audience,  # type: ignore[arg-type]
@@ -5531,12 +5507,41 @@ class ReportAgent(BaseAgent):
             assumptions=[str(item) for item in payload.trust.assumptions[:4]],
             sensitivities=[str(item) for item in payload.trust.missing_context[:4]],
             blocks=blocks,
+            charts=charts,
             metadata={
                 "finance_template": finance_template,
                 "source_count": len(payload.sources),
                 "output_modality": output_modality,
+                "available_chart_series": chart_series,
+                "quantitative_source_refs": self._coerce_quantitative_evidence(quantitative_evidence).source_refs,
             },
         )
+
+    def _upgrade_output_modality_for_charts(
+        self,
+        output_modality: str,
+        presentation_spec: PresentationSpec,
+        artifact_plan: list[ArtifactPlanEntry],
+    ) -> tuple[str, list[ArtifactPlanEntry]]:
+        if not getattr(presentation_spec, "charts", None):
+            return output_modality, artifact_plan
+        if output_modality in {"docx", "docx+xlsx", "pptx", "pptx+xlsx", "xlsx"}:
+            if output_modality == "docx":
+                upgraded = "docx+xlsx"
+            elif output_modality == "pptx":
+                upgraded = "pptx+xlsx"
+            else:
+                upgraded = output_modality
+            if upgraded != output_modality:
+                return upgraded, self._modality_to_artifact_plan(upgraded)[1]
+        return output_modality, artifact_plan
+
+    def _unique_periods(self, finance_rows: list[WorkbookFinancialRow]) -> list[str]:
+        seen: list[str] = []
+        for row in finance_rows:
+            if row.period and row.period not in seen:
+                seen.append(row.period)
+        return seen
 
     def _build_finance_presentation(
         self,
@@ -5693,246 +5698,267 @@ class ReportAgent(BaseAgent):
             return self.SOURCE_TRUST_RANKS["internal_finance_memo"]
         return self.SOURCE_TRUST_RANKS.get(source_type, self.SOURCE_TRUST_RANKS["retrieved_document"])
 
+    def _coerce_quantitative_evidence(
+        self,
+        quantitative_evidence: QuantitativeEvidenceBundle | Dict[str, Any] | None,
+    ) -> QuantitativeEvidenceBundle:
+        if isinstance(quantitative_evidence, QuantitativeEvidenceBundle):
+            return quantitative_evidence
+        if isinstance(quantitative_evidence, dict):
+            return QuantitativeEvidenceBundle.model_validate(quantitative_evidence)
+        return QuantitativeEvidenceBundle()
+
+    def _merge_unique_strings(self, *values: List[str]) -> list[str]:
+        seen: set[str] = set()
+        merged: list[str] = []
+        for items in values:
+            for value in items:
+                cleaned = str(value).strip()
+                if not cleaned:
+                    continue
+                lowered = cleaned.lower()
+                if lowered in seen:
+                    continue
+                seen.add(lowered)
+                merged.append(cleaned)
+        return merged
+
+    def _quantitative_rows_from_bundle(
+        self,
+        quantitative_evidence: QuantitativeEvidenceBundle | Dict[str, Any] | None,
+    ) -> list[dict[str, Any]]:
+        bundle = self._coerce_quantitative_evidence(quantitative_evidence)
+        rows: list[dict[str, Any]] = []
+        for row in bundle.numeric_series:
+            if not isinstance(row, dict):
+                continue
+            normalized: dict[str, Any] = {}
+            for key, value in row.items():
+                if value is None:
+                    continue
+                normalized[str(key)] = value
+            if normalized:
+                rows.append(normalized)
+        return rows
+
     def _build_chart_tables(
         self,
         *,
-        task_input: str,
         rows: list[WorkbookFinancialRow],
         comparison_rows: list[dict[str, Any]],
+        quantitative_evidence: QuantitativeEvidenceBundle | Dict[str, Any] | None = None,
     ) -> list[dict[str, Any]]:
-        finance_template = self._select_finance_template(task_input)
-        if finance_template == "aws_cost_review":
-            aws_rows = [row for row in rows if row.metric == "AWS cost"]
-            spend_trend_table = {
-                "title": "AWS Spend Trend",
-                "columns": ["Period", "Budget", "Actual", "Forecast"],
-                "rows": [
-                    [row.period, format_currency(row.budget), format_currency(row.actual), format_currency(row.forecast)]
-                    for row in aws_rows
-                ],
-                "row_provenance": [self._financial_row_provenance(row) for row in aws_rows],
-            }
-            comparison_source_rows = [
-                row for row in rows if row.metric in {"AWS cost", "Burn rate", "Project Kepler committed spend"}
-            ]
-            comparison_table = {
-                "title": "Budget vs Actual",
-                "columns": ["Metric", "Budget", "Actual", "Forecast"],
-                "rows": [
-                    [
-                        f"{row.metric} ({row.period})",
-                        format_currency(row.budget),
-                        format_currency(row.actual),
-                        format_currency(row.forecast),
-                    ]
-                    for row in comparison_source_rows
-                ],
-                "row_provenance": [self._financial_row_provenance(row) for row in comparison_source_rows],
-            }
-            return [table for table in [spend_trend_table, comparison_table] if table["rows"]]
-        if finance_template == "runway_burn_review":
-            runway_rows = [row for row in rows if row.metric in {"Cash at bank", "Burn rate", "Cash runway"}]
-            runway_table = {
-                "title": "Runway Snapshot",
-                "columns": ["Metric", "Period", "Actual", "Forecast"],
-                "rows": [
-                    [row.metric, row.period, format_currency(row.actual) if row.metric != "Cash runway" else f"{row.actual:.1f} months", format_currency(row.forecast) if row.metric != "Cash runway" else f"{row.forecast:.1f} months"]
-                    for row in runway_rows
-                ],
-                "row_provenance": [self._financial_row_provenance(row) for row in runway_rows],
-            }
-            cash_burn_table = {
-                "title": "Cash and Burn Trend",
-                "columns": ["Period", "Cash", "Burn"],
-                "rows": [
-                    [
-                        cash_row.period,
-                        format_currency(cash_row.actual),
-                        format_currency(
-                            next((burn_row.actual for burn_row in rows if burn_row.metric == "Burn rate" and burn_row.period == cash_row.period), 0.0)
-                        ),
-                    ]
-                    for cash_row in runway_rows
-                    if cash_row.metric == "Cash at bank"
-                ],
-                "row_provenance": [self._financial_row_provenance(row) for row in runway_rows if row.metric == "Cash at bank"],
-            }
-            return [table for table in [runway_table, cash_burn_table] if table["rows"]]
-        if finance_template == "project_spend_review":
-            status_rows = [row for row in rows if row.metric in {"Project Kepler committed spend", "Project Kepler remaining budget", "AWS cost"}]
-            forecast_rows = [
-                row
-                for row in rows
-                if row.metric in {"Project Kepler forecast spend", "Project Kepler forecast remaining budget"}
-            ]
-            spend_status_table = {
-                "title": "Project Spend Status",
-                "columns": ["Metric", "Period", "Budget", "Actual", "Variance"],
-                "rows": [
-                    [row.metric, row.period, format_currency(row.budget), format_currency(row.actual), format_currency(row.variance)]
-                    for row in status_rows
-                ],
-                "row_provenance": [self._financial_row_provenance(row) for row in status_rows],
-            }
-            forecast_table = {
-                "title": "Project Forecast Trajectory",
-                "columns": ["Period", "Metric", "Budget", "Actual", "Forecast"],
-                "rows": [
-                    [row.period, row.metric, format_currency(row.budget), format_currency(row.actual), format_currency(row.forecast)]
-                    for row in forecast_rows
-                ],
-                "row_provenance": [self._financial_row_provenance(row) for row in forecast_rows],
-            }
-            return [table for table in [spend_status_table, forecast_table] if table["rows"]]
-
-        tables = [
-            {
-                "title": "Chart Source Data",
-                "columns": ["Metric", "Budget", "Actual", "Forecast"],
-                "rows": [
-                    [row.metric, format_currency(row.budget), format_currency(row.actual), format_currency(row.forecast)]
-                    for row in rows
-                ],
-                "row_provenance": [self._financial_row_provenance(row) for row in rows],
-            }
-        ]
-        if comparison_rows:
-            tables.append(
+        if rows:
+            tables = [
                 {
-                    "title": "Period Comparison Data",
-                    "columns": ["Metric", "Prior Actual", "Current Actual", "Delta"],
+                    "title": "Chart Source Data",
+                    "columns": ["Period", "Metric", "Budget", "Actual", "Forecast", "Variance"],
                     "rows": [
                         [
-                            comparison["metric"],
-                            format_currency(comparison["prior_actual"]),
-                            format_currency(comparison["current_actual"]),
-                            format_currency(comparison["delta"]),
+                            row.period,
+                            row.metric,
+                            format_currency(row.budget),
+                            format_currency(row.actual),
+                            format_currency(row.forecast),
+                            format_currency(row.variance),
                         ]
-                        for comparison in comparison_rows
+                        for row in rows
                     ],
-                    "row_provenance": [
-                        {
-                            "source_type": "period_comparison",
-                            "source_ref": f"{comparison['prior_source_ref']} | {comparison['current_source_ref']}",
-                            "source_excerpt": comparison["source_excerpt"],
-                        }
-                        for comparison in comparison_rows
-                    ],
+                    "row_provenance": [self._financial_row_provenance(row) for row in rows],
                 }
-            )
-        return tables
+            ]
+            period_trend_rows = self._aggregate_rows_by_period(rows)
+            if len(period_trend_rows) > 1:
+                tables.append(
+                    {
+                        "title": "Period Trend Data",
+                        "columns": ["Period", "Budget", "Actual", "Forecast", "Variance"],
+                        "rows": period_trend_rows,
+                        "row_provenance": [
+                            {
+                                "source_type": "period_aggregate",
+                                "source_ref": period,
+                                "source_excerpt": f"Aggregated financial data for {period}",
+                            }
+                            for period, *_ in period_trend_rows
+                        ],
+                    }
+                )
+            if comparison_rows:
+                tables.append(
+                    {
+                        "title": "Period Comparison Data",
+                        "columns": ["Metric", "Prior Actual", "Current Actual", "Delta"],
+                        "rows": [
+                            [
+                                comparison["metric"],
+                                format_currency(comparison["prior_actual"]),
+                                format_currency(comparison["current_actual"]),
+                                format_currency(comparison["delta"]),
+                            ]
+                            for comparison in comparison_rows
+                        ],
+                        "row_provenance": [
+                            {
+                                "source_type": "period_comparison",
+                                "source_ref": f"{comparison['prior_source_ref']} | {comparison['current_source_ref']}",
+                                "source_excerpt": comparison["source_excerpt"],
+                            }
+                            for comparison in comparison_rows
+                        ],
+                    }
+                )
+            return tables
+
+        quantitative_rows = self._quantitative_rows_from_bundle(quantitative_evidence)
+        if not quantitative_rows:
+            return []
+
+        columns = self._merge_unique_strings(
+            ["metric", "category", "period", "time_period", "value", "budget", "actual", "forecast", "variance", "delta", "source_ref", "source_type"],
+            [key for row in quantitative_rows for key in row.keys()],
+        )
+        table_rows = [
+            [str(row.get(column, "")) for column in columns]
+            for row in quantitative_rows
+        ]
+        return [
+            {
+                "title": "Chart Source Data",
+                "columns": columns,
+                "rows": table_rows,
+                "row_provenance": [
+                    {
+                        "source_type": str(row.get("source_type") or "derived"),
+                        "source_ref": str(row.get("source_ref") or ""),
+                        "source_excerpt": str(row.get("source_excerpt") or ""),
+                    }
+                    for row in quantitative_rows
+                ],
+            }
+        ]
 
     def _build_chart_specs(
         self,
         *,
-        task_input: str,
-        comparison_rows: list[dict[str, Any]],
+        chart_requests: list[ChartRequest],
         chart_tables: list[dict[str, Any]],
     ) -> list[WorkbookChartSpec]:
-        finance_template = self._select_finance_template(task_input)
-        if finance_template == "aws_cost_review":
-            specs: list[WorkbookChartSpec] = []
-            if any(table["title"] == "AWS Spend Trend" and table["rows"] for table in chart_tables):
-                specs.append(
-                    WorkbookChartSpec(
-                        title="AWS Spend Trend",
-                        chart_type="bar",
-                        x_axis="Period",
-                        y_axis="Actual",
-                        series_label="AWS actual spend",
-                        source_sheet="Charts",
-                        source_table="AWS Spend Trend",
-                    )
-                )
-            if any(table["title"] == "Budget vs Actual" and table["rows"] for table in chart_tables):
-                specs.append(
-                    WorkbookChartSpec(
-                        title="Budget vs Actual",
-                        chart_type="bar",
-                        x_axis="Metric",
-                        y_axis="Actual",
-                        series_label="Actual vs budget",
-                        source_sheet="Charts",
-                        source_table="Budget vs Actual",
-                    )
-                )
-            return specs
-        if finance_template == "runway_burn_review":
-            specs: list[WorkbookChartSpec] = []
-            if any(table["title"] == "Cash and Burn Trend" and table["rows"] for table in chart_tables):
-                specs.append(
-                    WorkbookChartSpec(
-                        title="Cash and Burn Trend",
-                        chart_type="bar",
-                        x_axis="Period",
-                        y_axis="Cash",
-                        series_label="Cash position",
-                        source_sheet="Charts",
-                        source_table="Cash and Burn Trend",
-                    )
-                )
-            return specs
-        if finance_template == "project_spend_review":
-            specs: list[WorkbookChartSpec] = []
-            if any(table["title"] == "Project Spend Status" and table["rows"] for table in chart_tables):
-                specs.append(
-                    WorkbookChartSpec(
-                        title="Project Spend vs Budget",
-                        chart_type="bar",
-                        x_axis="Metric",
-                        y_axis="Actual",
-                        series_label="Project spend",
-                        source_sheet="Charts",
-                        source_table="Project Spend Status",
-                    )
-                )
-            if any(table["title"] == "Project Forecast Trajectory" and table["rows"] for table in chart_tables):
-                specs.append(
-                    WorkbookChartSpec(
-                        title="Projected Remaining Budget",
-                        chart_type="bar",
-                        x_axis="Period",
-                        y_axis="Actual",
-                        series_label="Forecast remaining budget",
-                        source_sheet="Charts",
-                        source_table="Project Forecast Trajectory",
-                    )
-                )
-            return specs
-
-        specs = [
-            WorkbookChartSpec(
-                title="Actual vs Budget by Metric",
-                chart_type="bar",
-                x_axis="Metric",
-                y_axis="Actual",
-                series_label="Actual vs Budget",
-                source_sheet="Charts",
-                source_table="Chart Source Data",
-            ),
-            WorkbookChartSpec(
-                title="Forecast by Metric",
-                chart_type="bar",
-                x_axis="Metric",
-                y_axis="Forecast",
-                series_label="Forecast",
-                source_sheet="Charts",
-                source_table="Chart Source Data",
-            ),
-        ]
-        if comparison_rows and any(table["title"] == "Period Comparison Data" for table in chart_tables):
+        table_titles = {str(table.get("title")) for table in chart_tables if table.get("rows")}
+        specs: list[WorkbookChartSpec] = []
+        for request in chart_requests:
+            source_table, x_axis, y_axis, chart_type, series_label = self._chart_spec_for_request(
+                request=request,
+                table_titles=table_titles,
+            )
+            if not source_table:
+                continue
             specs.append(
                 WorkbookChartSpec(
-                    title="Period Delta by Metric",
-                    chart_type="bar",
-                    x_axis="Metric",
-                    y_axis="Delta",
-                    series_label="Period delta",
+                    title=request.title,
+                    chart_type=chart_type,
+                    x_axis=x_axis,
+                    y_axis=y_axis,
+                    series_label=series_label,
                     source_sheet="Charts",
-                    source_table="Period Comparison Data",
+                    source_table=source_table,
                 )
             )
-        return specs
+        return self._dedupe_chart_specs(specs)
+
+    def _build_quantitative_chart_plan(
+        self,
+        *,
+        quantitative_evidence: QuantitativeEvidenceBundle | Dict[str, Any] | None,
+        finance_rows: list[WorkbookFinancialRow] | None = None,
+        comparison_rows: list[dict[str, Any]] | None = None,
+    ):
+        bundle = self._coerce_quantitative_evidence(quantitative_evidence)
+        numeric_series = [dict(row) for row in bundle.numeric_series if isinstance(row, dict)]
+        dimensions = self._merge_unique_strings(
+            list(bundle.dimensions),
+            ["metric"] if finance_rows else [],
+        )
+        time_periods = self._merge_unique_strings(
+            list(bundle.time_periods),
+            self._unique_periods(finance_rows or []),
+        )
+        comparisons = [dict(row) for row in bundle.comparisons if isinstance(row, dict)]
+        if comparison_rows:
+            comparisons.extend([dict(row) for row in comparison_rows if isinstance(row, dict)])
+        if finance_rows:
+            numeric_series.extend([row.model_dump(mode="python") for row in finance_rows])
+        available_fields = bundle.available_fields or None
+        return build_chart_plan(
+            numeric_series=numeric_series,
+            dimensions=dimensions,
+            time_periods=time_periods,
+            comparisons=comparisons,
+            available_fields=available_fields,
+        )
+
+    def _chart_spec_for_request(
+        self,
+        *,
+        request: ChartRequest,
+        table_titles: set[str],
+    ) -> tuple[Optional[str], str, str, str, str]:
+        if request.kind == ChartIntentKind.TREND:
+            source_table = "Period Trend Data" if "Period Trend Data" in table_titles else "Chart Source Data"
+            return source_table, "Period", request.y_axis or "Actual", "line", request.title
+        if request.kind == ChartIntentKind.FORECAST:
+            source_table = "Period Trend Data" if "Period Trend Data" in table_titles else "Chart Source Data"
+            return source_table, "Period", request.y_axis or "Forecast", "line", request.title
+        if request.kind == ChartIntentKind.COMPARISON:
+            source_table = "Period Comparison Data" if "Period Comparison Data" in table_titles else "Chart Source Data"
+            y_axis = request.y_axis or ("Delta" if source_table == "Period Comparison Data" else "Actual")
+            return source_table, "Metric", y_axis, "bar", request.title
+        if request.kind == ChartIntentKind.VARIANCE:
+            source_table = "Period Comparison Data" if "Period Comparison Data" in table_titles else "Chart Source Data"
+            y_axis = request.y_axis or ("Delta" if source_table == "Period Comparison Data" else "Variance")
+            return source_table, "Metric", y_axis, "bar", request.title
+        if request.kind == ChartIntentKind.MIX:
+            source_table = "Chart Source Data" if "Chart Source Data" in table_titles else None
+            return source_table, "Metric", request.y_axis or "Actual", "bar", request.title
+        source_table = "Chart Source Data" if "Chart Source Data" in table_titles else None
+        return source_table, "Metric", request.y_axis or "Actual", "bar", request.title
+
+    def _dedupe_chart_specs(self, specs: list[WorkbookChartSpec]) -> list[WorkbookChartSpec]:
+        seen: set[tuple[str, str, str, str]] = set()
+        deduped: list[WorkbookChartSpec] = []
+        for spec in specs:
+            key = (spec.title.lower(), spec.source_table or "", spec.x_axis.lower(), spec.y_axis.lower())
+            if key in seen:
+                continue
+            seen.add(key)
+            deduped.append(spec)
+        return deduped[:3]
+
+    def _aggregate_rows_by_period(self, rows: list[WorkbookFinancialRow]) -> list[list[str]]:
+        if not rows:
+            return []
+        grouped: dict[str, list[WorkbookFinancialRow]] = {}
+        for row in rows:
+            grouped.setdefault(row.period, []).append(row)
+        aggregated: list[list[str]] = []
+        for period in self._unique_periods(rows):
+            period_rows = grouped.get(period, [])
+            if not period_rows:
+                continue
+            budget = sum(row.budget for row in period_rows)
+            actual = sum(row.actual for row in period_rows)
+            forecast = sum(row.forecast for row in period_rows)
+            variance = sum(row.variance for row in period_rows)
+            aggregated.append(
+                [
+                    period,
+                    format_currency(budget),
+                    format_currency(actual),
+                    format_currency(forecast),
+                    format_currency(variance),
+                ]
+            )
+        return aggregated
 
     def _dedupe_financial_rows(self, rows: list[WorkbookFinancialRow]) -> list[WorkbookFinancialRow]:
         best_by_key: dict[tuple[str, str], WorkbookFinancialRow] = {}

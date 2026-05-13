@@ -13,28 +13,19 @@ from sqlmodel import Session, select
 from src.api.routes.auth import get_current_user
 from src.api.schemas import (
     AssistantMessageResponse,
-    AssistantQueryRequest,
     CalendarBriefingRequest,
     EmailIngestionRequest,
     MorningBriefRequest,
 )
-from src.core.database import (
-    engine,
-    get_user_by_ceo_id,
-    save_object,
-)
-from src.core.models import SessionInteraction, User
+from src.core.database import engine, get_user_by_ceo_id
 from src.integrations.providers import (
     ProviderIntegrationError,
     fetch_new_messages_since,
     register_gmail_watch,
 )
-from src.assistant.agent import AgenticAssistant
 from src.workflows.event_runner import EventWorkflowRunner
 
 logger = logging.getLogger(__name__)
-
-_agent = AgenticAssistant()
 
 router = APIRouter(tags=["events"])
 
@@ -99,6 +90,12 @@ async def email_ingestion(
 ):
     runner = EventWorkflowRunner()
     try:
+        logger.info(
+            "events.email received ceo_id=%s sender=%r subject=%r",
+            current_user.ceo_id,
+            (payload or EmailIngestionRequest()).sender,
+            (payload or EmailIngestionRequest()).subject,
+        )
         return await runner.run_email_ingestion(payload or EmailIngestionRequest(), current_user)
     except Exception as exc:
         raise HTTPException(status_code=500, detail=f"Email workflow failed: {str(exc)}") from exc
@@ -111,6 +108,13 @@ async def calendar_briefing(
 ):
     runner = EventWorkflowRunner()
     try:
+        logger.info(
+            "events.calendar received ceo_id=%s title=%r scheduled_for=%r timezone=%r",
+            current_user.ceo_id,
+            (payload or CalendarBriefingRequest()).title,
+            (payload or CalendarBriefingRequest()).scheduled_for,
+            (payload or CalendarBriefingRequest()).timezone,
+        )
         return await runner.run_calendar_briefing(payload or CalendarBriefingRequest(), current_user)
     except Exception as exc:
         raise HTTPException(status_code=500, detail=f"Calendar workflow failed: {str(exc)}") from exc
@@ -121,19 +125,15 @@ async def morning_briefing(
     payload: MorningBriefRequest,
     current_user: User = Depends(get_current_user),
 ):
-    message = (
-        f"Generate the morning executive brief for {payload.scheduled_for} "
-        f"(timezone: {payload.timezone}). "
-        "Check my email and calendar, surface what needs attention today."
-    )
-    query = AssistantQueryRequest(message=message)
-    interaction = save_object(SessionInteraction(
-        ceo_id=current_user.ceo_id,
-        query=message,
-        status="PENDING",
-    ))
+    runner = EventWorkflowRunner()
     try:
-        return await _agent.handle(payload=query, interaction=interaction, current_user=current_user)
+        logger.info(
+            "events.morning_brief received ceo_id=%s scheduled_for=%r timezone=%r",
+            current_user.ceo_id,
+            payload.scheduled_for,
+            payload.timezone,
+        )
+        return await runner.run_morning_brief(payload, current_user)
     except Exception as exc:
         raise HTTPException(status_code=500, detail=f"Morning brief failed: {str(exc)}") from exc
 

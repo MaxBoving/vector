@@ -7,6 +7,7 @@ or reject_approval() here.
 """
 from __future__ import annotations
 
+import json
 from datetime import datetime
 from typing import Any
 
@@ -55,6 +56,13 @@ def execute_approval(
     action = pending[0]
     context = ToolContext(ceo_id=ceo_id, interaction_id=interaction_id)
     result = execute_tool(action["tool_name"], action["tool_inputs"], context)
+    _record_world_event_for_approval(
+        ceo_id=ceo_id,
+        conversation_id=conversation_id,
+        interaction_id=interaction_id,
+        action=action,
+        result=result,
+    )
 
     updated = [
         {**a, "status": "executed"} if a.get("interaction_id") == interaction_id else a
@@ -77,3 +85,53 @@ def reject_approval(
         for a in (ctx.pending_actions or [])
     ]
     update_live_context(conversation_id, ceo_id=ceo_id, pending_actions=updated)
+
+
+def _record_world_event_for_approval(
+    *,
+    ceo_id: str,
+    conversation_id: str,
+    interaction_id: int,
+    action: dict[str, Any],
+    result: str,
+) -> None:
+    tool_name = str(action.get("tool_name") or "").strip()
+    if tool_name not in WRITE_TOOL_NAMES:
+        return
+
+    try:
+        parsed_result = json.loads(result) if result else {}
+    except json.JSONDecodeError:
+        parsed_result = {}
+    if isinstance(parsed_result, dict) and parsed_result.get("error"):
+        return
+
+    domain_map = {
+        "send_email_draft": "email",
+        "create_calendar_event": "calendar",
+    }
+    domain = domain_map.get(tool_name)
+    if not domain:
+        return
+
+    description_map = {
+        "send_email_draft": "CEO approved an outbound email action.",
+        "create_calendar_event": "CEO approved a calendar event action.",
+    }
+
+    from src.workflows.world_simulation import record_world_event
+
+    record_world_event(
+        ceo_id,
+        domain=domain,  # type: ignore[arg-type]
+        event_type="assistant_action_executed",
+        description=description_map.get(tool_name, "CEO approved an external action."),
+        source_ids=[str(interaction_id)],
+        payload={
+            "tool_name": tool_name,
+            "tool_inputs": dict(action.get("tool_inputs") or {}),
+            "result": result,
+            "conversation_id": conversation_id,
+            "interaction_id": interaction_id,
+        },
+    )

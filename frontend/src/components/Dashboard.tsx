@@ -1003,6 +1003,7 @@ export const Dashboard: React.FC = () => {
     selected_option_label?: string
     selected_option_value?: string
     selected_option_apply_text?: string
+    source_context?: string
   }
 
   const normalizeClarificationText = (value: string) =>
@@ -1012,37 +1013,59 @@ export const Dashboard: React.FC = () => {
       .trim()
       .replace(/\s+/g, ' ')
 
-  const buildClarificationFollowUpContext = (
+  const buildFollowUpContext = (
     message: AssistantMessage,
     text: string,
   ): ClarificationFollowUpContext | null => {
-    if (message.response_type !== 'clarification') {
-      return null
-    }
-
     const normalizedText = normalizeClarificationText(text)
     const options = (message.trust.question_options ?? [])
       .flatMap((entry) => entry.options.map((option) => ({
         ...option,
         offer_type: entry.offer_type,
       })))
-      .filter((option) => option.offer_type !== 'action_offer')
 
     const matchedOption = options.find((option) => {
       const candidates = [option.label, option.value, option.apply_text, option.description].filter(Boolean)
       return candidates.some((candidate) => normalizeClarificationText(String(candidate)) === normalizedText)
     })
 
+    const contextParts: string[] = []
+    const query = message.metadata?.query
+    const title = message.answer.title
+    const summary = message.presentation?.summary || message.answer.summary
+    if (query) contextParts.push(`Prior question: ${query}`)
+    if (title) contextParts.push(`Prior response: ${title}`)
+    if (summary) contextParts.push(summary)
+    const priorities = message.presentation?.priorities ?? []
+    const actions = message.presentation?.recommended_actions ?? []
+    for (const section of [...priorities.slice(0, 2), ...actions.slice(0, 2)]) {
+      const items = (section.items ?? []).slice(0, 3).join('; ')
+      if (items) contextParts.push(`${section.title}: ${items}`)
+      else if (section.content) contextParts.push(`${section.title}: ${section.content}`)
+    }
+    const sources = message.sources
+      .slice(0, 3)
+      .map((source) => [source.title, source.snippet].filter(Boolean).join(' — '))
+      .filter(Boolean)
+    if (sources.length > 0) {
+      contextParts.push(`Sources: ${sources.join(' | ')}`)
+    }
+    const followUps = message.answer.follow_ups ?? []
+    if (followUps.length > 0) {
+      contextParts.push(`Suggested follow-ups: ${followUps.map((item) => item.prompt).slice(0, 3).join(' | ')}`)
+    }
+
     const context: ClarificationFollowUpContext = {
       source_interaction_id: message.metadata?.interaction_id,
       source_response_type: message.response_type,
+      source_context: contextParts.join(' | ').slice(0, 2400) || undefined,
     }
 
     if (matchedOption) {
       context.selected_option_label = matchedOption.label
       context.selected_option_value = matchedOption.value
       context.selected_option_apply_text = matchedOption.apply_text
-    } else if (normalizedText) {
+    } else if (message.response_type === 'clarification' && normalizedText) {
       context.selected_option_apply_text = text
     }
 
@@ -3000,29 +3023,9 @@ export const Dashboard: React.FC = () => {
           }
           onResolveApproval={resolveApproval}
           onSubmitFollowUp={(message, text) => {
-            const ctxParts: string[] = []
-            const query = message.metadata?.query
-            const title = message.answer.title
-            const summary = message.presentation?.summary || message.answer.summary
-            if (query) ctxParts.push(`Prior question: ${query}`)
-            if (title) ctxParts.push(`Prior response: ${title}`)
-            if (summary) ctxParts.push(summary)
-            // Include key findings from structured sections
-            const priorities = message.presentation?.priorities ?? []
-            const actions = message.presentation?.recommended_actions ?? []
-            for (const section of [...priorities.slice(0, 2), ...actions.slice(0, 2)]) {
-              const items = (section.items ?? []).slice(0, 3).join('; ')
-              if (items) ctxParts.push(`${section.title}: ${items}`)
-            }
-            // Finance context
-            const fin = message.presentation?.finance
-            if (fin?.headline) ctxParts.push(fin.headline)
-            if (fin?.takeaways?.length) ctxParts.push(fin.takeaways.slice(0, 2).join('; '))
-            const ctx = ctxParts.join(' | ').slice(0, 1200)
-            const enriched = ctx ? `[Context: ${ctx}]\n\nFollow-up action: ${text}` : `Follow-up action: ${text}`
-            const followUpContext = buildClarificationFollowUpContext(message, text)
+            const followUpContext = buildFollowUpContext(message, text)
             void submitQuery({
-              requestText: enriched,
+              requestText: text,
               displayText: text,
               follow_up_context: followUpContext,
             })

@@ -1,7 +1,7 @@
 """Persistent world seed — Vela / Jordan Kessler.
 
 CEO: Jordan Kessler, Vela (GTM intelligence platform, Series B)
-Anchor: 2026-03-28 (end of Q1, board meeting in 18 days)
+Dates are generated from the current local date at seed time so the demo world stays current.
 
 Usage:
     python seed_world.py              # idempotent, safe to re-run
@@ -10,16 +10,16 @@ Usage:
 from __future__ import annotations
 
 import argparse
-import hashlib
 import json
 import sys
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).parent))
 
 from dotenv import load_dotenv
 load_dotenv(Path(__file__).parent / ".env")
+from passlib.context import CryptContext
 
 from src.core.database import engine, init_db, save_object
 from src.core.models import (
@@ -33,16 +33,31 @@ from src.core.models import (
     SessionInteraction,
     User,
 )
+from src.workflows.world_simulation import build_seed_world_snapshot
 from sqlmodel import Session, delete, select
 
 CEO_ID = "ceo_001"
 USERNAME = "jordan.kessler"
 COMPANY = "Vela"
 _FIXTURES = Path(__file__).parent / "src" / "dev" / "fixtures"
+pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
+
+
+def _today() -> datetime:
+    return datetime.now(timezone.utc).astimezone()
+
+
+def _iso_date(days_offset: int = 0) -> str:
+    return (_today().date() + timedelta(days=days_offset)).isoformat()
+
+
+def _iso_timestamp(days_offset: int = 0, *, hour: int = 0, minute: int = 0) -> str:
+    dt = _today().replace(hour=hour, minute=minute, second=0, microsecond=0)
+    return (dt + timedelta(days=days_offset)).isoformat()
 
 
 def _hash(pw: str) -> str:
-    return hashlib.sha256(pw.encode()).hexdigest()
+    return pwd_context.hash(pw)
 
 
 def _now() -> str:
@@ -186,18 +201,18 @@ def _seed_situational_profile(session: Session, ceo_id: str) -> None:
             "Headcount model in financial model is wrong (eng count off by 2)",
         ],
         recurring_topics=[
-            {"topic": "NRR gap vs plan", "mention_count": 4, "last_seen": "2026-03-28", "resolved": False},
-            {"topic": "Omni churn risk", "mention_count": 3, "last_seen": "2026-03-28", "resolved": False},
-            {"topic": "Apex stalled deal", "mention_count": 2, "last_seen": "2026-03-25", "resolved": False},
-            {"topic": "Crestline bug", "mention_count": 2, "last_seen": "2026-03-20", "resolved": False},
-            {"topic": "CFO vacancy", "mention_count": 5, "last_seen": "2026-03-28", "resolved": False},
-            {"topic": "Series C prep", "mention_count": 3, "last_seen": "2026-03-28", "resolved": False},
-            {"topic": "Rep performance Q1", "mention_count": 2, "last_seen": "2026-03-26", "resolved": False},
+            {"topic": "NRR gap vs plan", "mention_count": 4, "last_seen": _iso_date(0), "resolved": False},
+            {"topic": "Omni churn risk", "mention_count": 3, "last_seen": _iso_date(0), "resolved": False},
+            {"topic": "Apex stalled deal", "mention_count": 2, "last_seen": _iso_date(-3), "resolved": False},
+            {"topic": "Crestline bug", "mention_count": 2, "last_seen": _iso_date(-8), "resolved": False},
+            {"topic": "CFO vacancy", "mention_count": 5, "last_seen": _iso_date(0), "resolved": False},
+            {"topic": "Series C prep", "mention_count": 3, "last_seen": _iso_date(0), "resolved": False},
+            {"topic": "Rep performance Q1", "mention_count": 2, "last_seen": _iso_date(-2), "resolved": False},
         ],
         open_threads=[
-            {"thread": "Ironstone EU data residency — Sam owns eng scoping", "owner": "Sam", "due": "2026-04-05"},
-            {"thread": "Omni EBR scheduled — Tyler to prep", "owner": "Tyler", "due": "2026-04-02"},
-            {"thread": "CFO search — final interview Sandra Meir pending", "owner": "Jordan", "due": "2026-04-10"},
+            {"thread": "Ironstone EU data residency — Sam owns eng scoping", "owner": "Sam", "due": _iso_date(6)},
+            {"thread": "Omni EBR scheduled — Tyler to prep", "owner": "Tyler", "due": _iso_date(3)},
+            {"thread": "CFO search — final interview Sandra Meir pending", "owner": "Jordan", "due": _iso_date(11)},
         ],
         relationship_obligations=[
             "Dana Whitfield — board update call before packet goes out",
@@ -382,8 +397,8 @@ def _seed_interaction_history(ceo_id: str) -> None:
             conversation_id=conv_id,
             ceo_id=ceo_id,
             title="Morning briefing — Q1 close week",
-            created_at="2026-03-28T07:00:00+00:00",
-            updated_at="2026-03-28T09:45:00+00:00",
+            created_at=_iso_timestamp(0, hour=7),
+            updated_at=_iso_timestamp(0, hour=9, minute=45),
         )
         session.add(conv)
         session.commit()
@@ -442,7 +457,7 @@ def _seed_interaction_history(ceo_id: str) -> None:
                 response=data["response"],
                 intent=data.get("intent"),
                 status="COMPLETED",
-                timestamp=f"2026-03-28T{hour:02d}:{minute:02d}:00+00:00",
+                timestamp=_iso_timestamp(0, hour=hour, minute=minute),
             )
             session.add(interaction)
             session.commit()
@@ -450,7 +465,7 @@ def _seed_interaction_history(ceo_id: str) -> None:
             interaction_ids.append(interaction.id)
 
         conv.interaction_ids = interaction_ids
-        conv.updated_at = "2026-03-28T09:45:00+00:00"
+        conv.updated_at = _iso_timestamp(0, hour=9, minute=45)
         session.add(conv)
         session.commit()
 
@@ -501,6 +516,7 @@ def seed_world(
     _seed_signals(ceo_id)
     _seed_memories(ceo_id)
     _seed_interaction_history(ceo_id)
+    build_seed_world_snapshot(ceo_id)
     print(f"[seed_world] Seeded ceo_id={ceo_id} company={COMPANY}")
 
 

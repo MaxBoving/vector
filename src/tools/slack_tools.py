@@ -182,6 +182,24 @@ class SlackPostTool(BaseTool):
         except SlackIntegrationError as exc:
             return ToolResult(tool_name=self.metadata.name, success=False, error=str(exc))
 
+        if kwargs.get("record_world_event", True):
+            from src.workflows.world_simulation import record_world_event
+
+            record_world_event(
+                context.ceo_id or "",
+                domain="signals",
+                event_type="slack_message_posted",
+                description="Slack message posted by the assistant.",
+                source_ids=[str(context.interaction_id or "")] if context.interaction_id is not None else [],
+                payload={
+                    "channel_id": channel_id,
+                    "thread_ts": thread_ts,
+                    "ts": result.get("ts"),
+                    "message_preview": text[:220],
+                    "action": "message_posted",
+                },
+            )
+
         return ToolResult(
             tool_name=self.metadata.name,
             success=True,
